@@ -46,6 +46,11 @@ visitati*.json
 *-da-fare-a-mano.txt
 DA VISITARE*
 
+# I backup dell'app: Backup.nomeSuggerito() li chiama wherewego-<data>.json e
+# il selettore di sistema lascia scegliere dove salvarli. Se la scelta cade
+# qui dentro, senza questa riga finirebbero in un commit.
+wherewego-*.json
+
 # --------------------------------------------------------------------------
 # Sistema
 # --------------------------------------------------------------------------
