@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icona adattiva: da Android 8 (il nostro minSdk e' 26) il launcher ritaglia
+     lui la forma — cerchio, quadrato con gli angoli, goccia — quindi noi
+     diamo sfondo e primo piano separati e non decidiamo la sagoma.
+
+     I PNG di ic_launcher_foreground li genera tools/genera_icona.js dalla
+     sorgente in assets-sorgente/icona-globo.png: il globo e' portato a 72dp
+     dentro la tela di 108dp, cioe' esattamente la parte che i launcher
+     mostrano. Sui ritagli tondi tocca il bordo, su quelli quadrati resta
+     inscritto e si vede lo sfondo agli angoli. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/sfondo_icona" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

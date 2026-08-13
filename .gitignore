@@ -1,0 +1,54 @@
+# --------------------------------------------------------------------------
+# I DATI NON STANNO QUI, ED È UNA SCELTA OBBLIGATA
+#
+# Le suddivisioni amministrative vengono da GADM, la cui licenza consente
+# l'uso personale ma **vieta la ridistribuzione**. Pubblicare i tile o i
+# GeoJSON delle regioni sarebbe ridistribuirli, quindi il repository porta la
+# ricetta e non gli ingredienti: si rigenerano con gli script in tools/,
+# scaricando le fonti in proprio. Vedi README.md e CREDITI.md.
+#
+# Vale anche per il pratico: allCountries.txt di GeoNames pesa 1,7 GB, contro
+# un limite di 100 MB per file su GitHub.
+# --------------------------------------------------------------------------
+web/data/
+data_raw/
+
+# --------------------------------------------------------------------------
+# Roba generata: si rifà, non si versiona
+# --------------------------------------------------------------------------
+node_modules/
+android/build/
+android/app/build/
+android/.gradle/
+android/.kotlin/
+*.apk
+*.aab
+
+# Percorso dell'SDK sulla macchina di chi compila: personale e inutile agli altri
+android/local.properties
+
+# L'indice delle città: 57 MB rigenerabili con tools/prepara_indice.js
+android/app/src/main/assets/citta.db
+
+# Chiavi di firma. Se un giorno ne nasce una, non deve finire qui dentro.
+*.jks
+*.keystore
+keystore.properties
+
+# --------------------------------------------------------------------------
+# Dati personali: gli elenchi dei posti visitati e i backup dell'app dicono
+# dove sei stato e, di conseguenza, dove abiti.
+# --------------------------------------------------------------------------
+visitati*.txt
+visitati*.json
+*-importato.json
+*-corrispondenze.txt
+*-da-fare-a-mano.txt
+DA VISITARE*
+
+# --------------------------------------------------------------------------
+# Sistema
+# --------------------------------------------------------------------------
+Thumbs.db
+.DS_Store
+*.log

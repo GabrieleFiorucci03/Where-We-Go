@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Identica a ic_launcher: con l'icona adattiva la maschera tonda la mette il
+     launcher, non noi. Il file esiste perche' alcuni launcher chiedono
+     esplicitamente android:roundIcon. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/sfondo_icona" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

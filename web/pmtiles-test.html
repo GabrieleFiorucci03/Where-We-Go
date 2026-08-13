@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Prova PMTiles</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; }
+  #map { position: absolute; inset: 0 0 45% 0; background: #dfe4e8; }
+  #log {
+    position: absolute; inset: 55% 0 0 0; overflow-y: auto; padding: 12px 14px;
+    background: #12161a; color: #d8dee4; font: 12px/1.5 ui-monospace, Consolas, monospace;
+    border-top: 2px solid #2c3238; white-space: pre-wrap;
+  }
+  .ok { color: #7ddc8a; }
+  .ko { color: #ff8a80; }
+  .info { color: #8ab4f8; }
+  h1 { font-size: 13px; margin: 0 0 8px; color: #fff; letter-spacing: .3px; }
+</style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="log"><h1>Spike M0-B — lettura PMTiles dal disco</h1></div>
+  <script src="vendor/pmtiles.js"></script>
+  <script type="module" src="pmtiles-test.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Il nome sotto l'icona nel telefono. §0 del piano dice «Where We Go»;
+         il manifest ha detto «Mappamondo» fino alla M7. Non e' tradotto: e' il
+         nome dell'app, non una frase. -->
+    <string name="app_name">Where We Go</string>
+</resources>

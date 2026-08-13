@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Versione a una tinta per le «icone a tema» di Android 13+: quando l'utente
+     accende quell'opzione il launcher ignora i colori e ricolora questa sagoma
+     con quelli del suo sfondo. Il globo dipinto non si puo' riusare — appiattito
+     a una tinta diventa un disco pieno — quindi qui c'e' un mappamondo
+     disegnato a tratto: cerchio, equatore, meridiano.
+
+     Stessa geometria degli altri: tela 108, contenuto entro i 72dp centrali
+     (raggio 33 + meta' del tratto = 35.5). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- il bordo del globo -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M54,21a33,33 0 1 0 0,66a33,33 0 1 0 0,-66z" />
+
+    <!-- l'equatore -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M21,54L87,54" />
+
+    <!-- un meridiano, che e' il tratto che fa leggere il cerchio come sfera -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M54,21a15,33 0 1 0 0,66a15,33 0 1 0 0,-66z" />
+</vector>

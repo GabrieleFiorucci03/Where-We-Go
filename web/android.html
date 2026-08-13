@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Mappamondo — spike</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 26px 22px;
+    font-family: "Segoe UI", system-ui, sans-serif; color: #1c1c1c; background: #f6f7f8;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 22px; color: #666; font-size: 13.5px; line-height: 1.5; }
+  a.card {
+    display: block; text-decoration: none; color: inherit; background: #fff;
+    border: 1px solid #dcdcdc; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+  a.card:active { background: #eef1f4; }
+  a.card b { display: block; font-size: 16px; margin-bottom: 3px; }
+  a.card span { font-size: 13px; color: #666; line-height: 1.45; }
+  #env {
+    margin-top: 20px; padding: 12px 14px; border-radius: 10px; background: #12161a; color: #cfd6dd;
+    font: 11.5px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-all;
+  }
+</style>
+</head>
+<body>
+  <h1>Mappamondo — spike tecnico</h1>
+  <p class="sub">Verifica che il globo e i PMTiles funzionino dentro la WebView Android.</p>
+
+  <a class="card" href="pmtiles-test.html">
+    <b>1. Prova PMTiles</b>
+    <span>Legge un archivio dal disco tramite il ponte Kotlin e lo disegna con MapLibre.
+      È il rischio numero uno del progetto.</span>
+  </a>
+
+  <a class="card" href="index.html">
+    <b>2. Globo completo</b>
+    <span>Il prototipo con stati, regioni GADM, città e riempimento a bandiera.
+      Serve a misurare le prestazioni reali sul telefono.</span>
+  </a>
+
+  <div id="env">rilevamento ambiente…</div>
+
+  <script>
+    (function () {
+      const righe = [];
+      righe.push('ponte Kotlin: ' + (window.AndroidTiles ? 'presente' : 'assente (browser desktop)'));
+      if (window.AndroidTiles) {
+        try { righe.push('PMTiles sul dispositivo: ' + window.AndroidTiles.list()); }
+        catch (e) { righe.push('elenco fallito: ' + e.message); }
+      }
+      const gl2 = document.createElement('canvas').getContext('webgl2');
+      righe.push('WebGL2: ' + (gl2 ? 'sì' : 'NO'));
+      if (gl2) {
+        const dbg = gl2.getExtension('WEBGL_debug_renderer_info');
+        if (dbg) righe.push('GPU: ' + gl2.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
+        righe.push('texture max: ' + gl2.getParameter(gl2.MAX_TEXTURE_SIZE) + ' px');
+      }
+      righe.push('schermo: ' + screen.width + 'x' + screen.height + ' @' + devicePixelRatio + 'x');
+      righe.push('memoria dispositivo: ' + (navigator.deviceMemory || '?') + ' GB');
+      righe.push('user agent: ' + navigator.userAgent);
+      document.getElementById('env').textContent = righe.join('\n');
+      console.log('[android.html] ' + righe.join(' | '));
+    })();
+  </script>
+</body>
+</html>

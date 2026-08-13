@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sfondo dell'icona adattiva. Bianco perche' il globo e' saturo e scuro
+         sul bordo: su bianco stacca, su un blu qualsiasi si impasterebbe con
+         gli oceani.
+
+         Si vede solo agli angoli, e solo sui launcher con maschera non tonda:
+         dove la maschera e' un cerchio il globo lo copre tutto. -->
+    <color name="sfondo_icona">#FFFFFFFF</color>
+</resources>

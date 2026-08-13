@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Mappamondo Visited / Wanted — prototipo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='none' stroke='%23222' stroke-width='1.5'/><ellipse cx='8' cy='8' rx='3' ry='7' fill='none' stroke='%23222' stroke-width='1'/><path d='M1.5 8h13' stroke='%23222' stroke-width='1'/></svg>">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<style>
+  :root {
+    --panel: rgba(255,255,255,.94);
+    --border: #d8d8d8;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --visited: #2e9e4f;
+    --wanted: #f08a24;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  #map { position: absolute; inset: 0; background: #cfd6dc; }
+
+  #hud {
+    position: absolute; top: 12px; left: 12px; z-index: 10;
+    width: 268px; max-height: calc(100% - 24px); overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; font-size: 13px; line-height: 1.5;
+    box-shadow: 0 4px 18px rgba(0,0,0,.13);
+    backdrop-filter: blur(6px);
+  }
+  #hud h1 { font-size: 14px; margin: 0 0 2px; letter-spacing: .2px; }
+  #hud .sub { color: var(--muted); font-size: 11.5px; margin-bottom: 12px; }
+  #hud fieldset { border: 0; border-top: 1px solid var(--border); margin: 12px 0 0; padding: 10px 0 0; }
+  #hud legend { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); padding: 0 6px 0 0; }
+  label { display: flex; align-items: center; gap: 7px; cursor: pointer; padding: 2px 0; }
+  input[type=checkbox], input[type=radio] { accent-color: #333; margin: 0; }
+
+  .stats { display: flex; gap: 8px; margin-top: 6px; }
+  .stat { flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 7px; padding: 6px 2px; }
+  .stat b { display: block; font-size: 17px; line-height: 1.1; }
+  .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .stat.v b { color: var(--visited); }
+  .stat.w b { color: var(--wanted); }
+
+  #mode { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11.5px; margin-top: 10px; }
+  button {
+    font: inherit; font-size: 12px; padding: 6px 10px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  button:hover { background: #f2f2f2; }
+  .row { display: flex; gap: 6px; margin-top: 10px; }
+  .row button { flex: 1; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; color: var(--muted); }
+  .chips button.chip {
+    font-size: 11.5px; padding: 3px 8px; border-radius: 20px;
+    border: 1px solid #cfe3d4; background: #eef7f0; color: #1f6b38; cursor: pointer;
+  }
+  .chips button.chip:hover { background: #dceee1; }
+
+  #toast {
+    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(14px);
+    z-index: 10; background: rgba(20,20,20,.9); color: #fff; padding: 9px 16px;
+    border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity .18s, transform .18s;
+    pointer-events: none; white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+
+  #loading {
+    position: absolute; inset: 0; z-index: 20; display: grid; place-items: center;
+    background: #fff; font-size: 14px; color: var(--muted); transition: opacity .4s;
+  }
+  #loading.done { opacity: 0; pointer-events: none; }
+
+  /* Dentro l'app Android l'interfaccia e' Compose: la barra laterale del
+     prototipo e il resto degli attrezzi non si disegnano, resta la sola mappa.
+     La classe la mette app.js appena rileva il ponte AndroidUI. */
+  .per-app #hud,
+  .per-app #mode,
+  .per-app #toast { display: none !important; }
+</style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="hud">
+    <h1>Mappamondo — prototipo</h1>
+    <div class="sub">Fase A dello spike M0. Clic su uno stato, una regione o una città per ciclare:
+      niente → <b style="color:var(--visited)">visitato</b> → <b style="color:var(--wanted)">da visitare</b> → niente.</div>
+
+    <div class="stats">
+      <div class="stat v"><b id="n-visited">0</b><span>stati visitati</span></div>
+      <div class="stat w"><b id="n-wanted">0</b><span>stati wanted</span></div>
+    </div>
+    <div id="n-regioni" class="sub" style="margin:6px 0 0; text-align:center"></div>
+
+    <fieldset>
+      <legend>Dettaglio regionale</legend>
+      <div class="sub" style="margin:0 0 8px">
+        <b>Pressione lunga su uno stato</b> per accendere le sue regioni. Solo quelle vengono
+        caricate: gli altri paesi restano stati, colorati se visitati.
+      </div>
+      <div id="regioni-attive" class="chips"><i>nessuno</i></div>
+      <button id="btn-regioni-off" style="margin-top:8px;width:100%">Spegni tutte le regioni</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Livelli</legend>
+      <label><input type="checkbox" id="opt-cities" checked> Mostra le città (da z 4)</label>
+      <label><input type="checkbox" id="opt-labels" checked> Nomi delle città (da z 7)</label>
+      <div class="sub" style="margin:4px 0 0">Pallino <b style="color:#d33333">rosso</b> se non
+        visitata, <b style="color:var(--wanted)">arancio</b> se da visitare,
+        <b style="color:var(--visited)">verde</b> se visitata. Indipendenti da nazione e regione.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Adattamento bandiera</legend>
+      <label><input type="radio" name="fit" value="deforma" checked> Deforma sulla sagoma</label>
+      <label><input type="radio" name="fit" value="auto"> Automatico</label>
+      <label><input type="radio" name="fit" value="nucleo"> Nucleo della sagoma</label>
+      <label><input type="radio" name="fit" value="ritaglia"> Ritaglia (originale)</label>
+      <label><input type="radio" name="fit" value="estendi"> Intera, bordi estesi</label>
+      <label><input type="radio" name="fit" value="inscritto"> Rettangolo inscritto</label>
+      <div class="sub" style="margin:6px 0 0">Per confrontarle una accanto all'altra su molti paesi
+        apri <a href="compare.html" target="_blank">compare.html</a>.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Proiezione maschera</legend>
+      <label><input type="radio" name="proj" value="mercator" checked> Mercatore</label>
+      <label><input type="radio" name="proj" value="equirect"> Equirettangolare</label>
+      <div class="sub" style="margin:6px 0 0">Se la bandiera appare schiacciata o slittata rispetto ai
+        confini, è l'altra opzione quella giusta. È la domanda tecnica che questo prototipo deve risolvere.</div>
+    </fieldset>
+
+    <div id="mode">zoom — · modalità —</div>
+    <div class="row">
+      <button id="btn-demo">Demo Europa</button>
+      <button id="btn-reset">Azzera</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="loading">caricamento dati…</div>
+
+  <!-- pmtiles.js e' un bundle globale, non un modulo: va prima di app.js -->
+  <script src="vendor/pmtiles.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
