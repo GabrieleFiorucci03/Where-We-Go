@@ -46,12 +46,15 @@ richiede uno User-Agent descrittivo (vedi `GalleriaCommons.kt`).
 
 ## Librerie e risorse incluse nel repository
 
-| cosa | dove | licenza |
-|---|---|---|
-| MapLibre GL JS | `web/vendor/maplibre-gl*` | BSD-3-Clause |
-| pmtiles.js | `web/vendor/pmtiles.js` | BSD-3-Clause |
-| flag-icons (bandiere SVG) | `web/flags/` | MIT — © Panayiotis Lipiridis |
-| Noto Sans (glifi per MapLibre) | `web/fonts/` | SIL Open Font License 1.1 — vedi `web/fonts/LICENZA.md` |
+Tutte permettono la ridistribuzione, a patto che il testo della licenza viaggi
+insieme ai file. Quindi ognuna ha il suo, copiato dalla fonte originale:
+
+| cosa | dove | licenza | testo |
+|---|---|---|---|
+| MapLibre GL JS 6.3.0 | `web/vendor/maplibre-gl*` | BSD-3-Clause | `web/vendor/LICENSE-maplibre-gl-js.txt` |
+| pmtiles.js | `web/vendor/pmtiles.js` | BSD-3-Clause — © Protomaps LLC | `web/vendor/LICENSE-pmtiles.txt` |
+| flag-icons (bandiere SVG) | `web/flags/` | MIT — © Panayiotis Lipiridis | `web/flags/LICENSE-flag-icons.txt` |
+| Noto Sans (glifi per MapLibre) | `web/fonts/` | SIL Open Font License 1.1 | `web/fonts/LICENZA.md` |
 
 Le librerie Android (Compose, WebKit, Browser, Coil) sono dipendenze Gradle
 sotto licenza Apache 2.0 e non sono incluse qui: le scarica il build.
@@ -59,5 +62,7 @@ sotto licenza Apache 2.0 e non sono incluse qui: le scarica il build.
 ## L'icona
 
 `assets-sorgente/icona-globo.png` è l'immagine da cui `tools/genera_icona.js`
-ricava le icone di lancio. **Non è opera dell'autore di questo progetto**: se
-riusi il repository, sostituiscila con una tua.
+ricava le icone di lancio. È **generata con un'intelligenza artificiale** su
+richiesta dell'autore del progetto: non deriva da un'opera di terzi e si
+ridistribuisce insieme al repository. Se lo riusi e vuoi un'identità tua,
+sostituiscila e rilancia lo script.
