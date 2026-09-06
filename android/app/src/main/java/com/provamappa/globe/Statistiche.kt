@@ -1,12 +1,16 @@
 package com.provamappa.globe
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -31,6 +35,7 @@ data class Conteggi(
     val nazioniVisitate: Int,
     val nazioniInProgramma: Int,
     val regioniVisitate: Int,
+    val regioniInProgramma: Int,
     val cittaVisitate: Int,
     val cittaInProgramma: Int,
 )
@@ -40,21 +45,34 @@ data class Conteggi(
  * un numero privo di significato (§8.1, note di realizzazione).
  */
 fun conta(stato: Map<String, String>): Conteggi {
-    var nv = 0; var np = 0; var rv = 0; var cv = 0; var cp = 0
+    var nv = 0; var np = 0; var rv = 0; var rp = 0; var cv = 0; var cp = 0
     for ((chiave, valore) in stato) {
         val tipo = chiave.substringBefore(':')
         when (tipo) {
             "countries" -> if (valore == "visited") nv++ else if (valore == "wanted") np++
-            "regions" -> if (valore == "visited") rv++
+            // le regioni da visitare si contavano gia' nel salvataggio ma non
+            // comparivano: adesso hanno una riga come le altre, e da li' si apre
+            // l'elenco
+            "regions" -> if (valore == "visited") rv++ else if (valore == "wanted") rp++
             "places" -> if (valore == "visited") cv++ else if (valore == "wanted") cp++
         }
     }
-    return Conteggi(nv, np, rv, cv, cp)
+    return Conteggi(nv, np, rv, rp, cv, cp)
 }
 
+/**
+ * @param onApri quale elenco aprire: lo stato e il tipo della riga toccata.
+ *   Un conteggio che non si puo' aprire e' un numero da prendere per buono, e
+ *   "undici nazioni visitate" senza poter vedere **quali** era esattamente
+ *   questo.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Statistiche(stato: Map<String, String>, onChiudi: () -> Unit) {
+fun Statistiche(
+    stato: Map<String, String>,
+    onApri: (Stato, String) -> Unit,
+    onChiudi: () -> Unit,
+) {
     val c = conta(stato)
     val percentuale = c.nazioniVisitate.toFloat() / STATI_SOVRANI
 
@@ -65,7 +83,10 @@ fun Statistiche(stato: Map<String, String>, onChiudi: () -> Unit) {
         ) {
             Text("Dove sei stato", style = MaterialTheme.typography.headlineSmall)
 
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                Modifier.clickable { onApri(Stato.VISITATA, "countries") },
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 Text(
                     "%d nazioni su %d — %.1f%% del mondo".format(
                         c.nazioniVisitate, STATI_SOVRANI, percentuale * 100
@@ -85,22 +106,40 @@ fun Statistiche(stato: Map<String, String>, onChiudi: () -> Unit) {
                 )
             }
 
-            Riga("Nazioni in programma", c.nazioniInProgramma)
-            Riga("Regioni visitate", c.regioniVisitate)
-            Riga("Città visitate", c.cittaVisitate)
-            Riga("Città in programma", c.cittaInProgramma)
+            Riga("Nazioni da visitare", c.nazioniInProgramma) {
+                onApri(Stato.IN_PROGRAMMA, "countries")
+            }
+            Riga("Regioni visitate", c.regioniVisitate) { onApri(Stato.VISITATA, "regions") }
+            Riga("Regioni da visitare", c.regioniInProgramma) {
+                onApri(Stato.IN_PROGRAMMA, "regions")
+            }
+            Riga("Città visitate", c.cittaVisitate) { onApri(Stato.VISITATA, "places") }
+            Riga("Città da visitare", c.cittaInProgramma) { onApri(Stato.IN_PROGRAMMA, "places") }
         }
     }
 }
 
 @Composable
-private fun Riga(etichetta: String, valore: Int) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+private fun Riga(etichetta: String, valore: Int, onApri: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onApri),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
         Text(etichetta, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            "%,d".format(valore),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text(
+                "%,d".format(valore),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            // la freccia dice che la riga si apre: senza, un conteggio
+            // cliccabile e uno che non lo e' hanno lo stesso aspetto
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

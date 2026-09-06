@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun Menu(
     indiceDisponibile: Boolean,
+    /** Cosa dice l'indice di se stesso: vedi IndiceCitta.diagnostica(). */
+    statoIndice: String,
     onElenchi: () -> Unit,
     onStatistiche: () -> Unit,
     onEsportaImmagine: () -> Unit,
@@ -52,7 +54,11 @@ fun Menu(
             ListItem(
                 headlineContent = { Text("Cerca una città o una nazione") },
                 supportingContent = {
-                    Text(if (indiceDisponibile) "Fra 440.273 città" else "Indice non disponibile")
+                    // I numeri **veri**, contati all'apertura del menu. Erano
+                    // scritti a mano — "Fra 440.273 città" — quindi comparivano
+                    // identici anche con il database vuoto o non aperto, ed e'
+                    // esattamente il caso in cui servirebbe accorgersene.
+                    Text(statoIndice)
                 },
                 leadingContent = { Icon(Icons.Filled.Search, contentDescription = null) },
                 modifier = Modifier.clickable(enabled = indiceDisponibile, onClick = onElenchi),
@@ -60,7 +66,7 @@ fun Menu(
             ListItem(
                 headlineContent = { Text("Elenco delle nazioni") },
                 supportingContent = {
-                    Text(if (indiceDisponibile) "242 nazioni" else "Indice non disponibile")
+                    Text(statoIndice)
                 },
                 leadingContent = { Icon(Icons.Filled.List, contentDescription = null) },
                 modifier = Modifier.clickable(enabled = indiceDisponibile, onClick = onElenchi),

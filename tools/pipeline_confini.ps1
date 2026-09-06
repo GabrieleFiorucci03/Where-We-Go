@@ -24,7 +24,12 @@ function Passo($n, $testo) {
 #   $env:ZOOM_MAX_CONFINI='10'; $env:SEMPLIFICAZIONE='2'
 # Un giro costa una manciata di secondi, quindi conviene provare invece di
 # decidere a naso.
-$zoomMax = if ($env:ZOOM_MAX_CONFINI) { $env:ZOOM_MAX_CONFINI } else { '8' }
+# Il predefinito e' 9 e non 8, che era il valore di prima: l'archivio in linea e'
+# sempre stato a zoom 9 — lo dice il suo stesso intestazione — quindi con l'8 chi
+# rilanciava la pipeline sostituiva 45,6 MB di tile con 26,5, perdendo dettaglio
+# sui confini agli zoom alti senza che niente lo segnalasse. Un predefinito che
+# non ricostruisce cio' che e' in produzione e' una trappola, non un'impostazione.
+$zoomMax = if ($env:ZOOM_MAX_CONFINI) { $env:ZOOM_MAX_CONFINI } else { '9' }
 $semplificazione = if ($env:SEMPLIFICAZIONE) { $env:SEMPLIFICAZIONE } else { '4' }
 
 Passo 1 'Preparazione degli ingressi'

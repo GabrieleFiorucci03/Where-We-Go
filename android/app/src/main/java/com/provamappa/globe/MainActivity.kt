@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.withContext
 import androidx.webkit.WebViewAssetLoader
 
 /**
@@ -67,6 +69,9 @@ class MainActivity : ComponentActivity() {
         WebView.setWebContentsDebuggingEnabled(true)
 
         val indice = IndiceCitta(this)
+        // Le regioni non stanno nell'indice SQLite: si leggono dai GeoJSON degli
+        // asset, una nazione alla volta e con la cache. Vedi IndiceRegioni.
+        val regioni = IndiceRegioni(this)
 
         setContent {
             MaterialTheme {
@@ -74,6 +79,9 @@ class MainActivity : ComponentActivity() {
                 var menuAperto by remember { mutableStateOf(false) }
                 var elenchiAperti by remember { mutableStateOf(false) }
                 var statisticheAperte by remember { mutableStateOf(false) }
+                // Quale elenco del marcato e' aperto, con la sua porta: una riga
+                // delle statistiche.
+                var marcati by remember { mutableStateOf<Pair<Stato, String>?>(null) }
                 // la citta' di cui si stanno guardando le foto: e' una copia e
                 // non un riferimento a `selezione`, cosi' chiudendo la galleria
                 // la scheda sotto e' ancora quella di prima
@@ -210,8 +218,18 @@ class MainActivity : ComponentActivity() {
                     // tocchi e un'etichetta generica: §9.1 la voleva a portata
                     // di mano, ed e' la via piu' rapida per marcare un posto
                     // senza andarlo a cercare sul globo.
+                    //
+                    // `navigationBarsPadding` prima del padding: con targetSdk 35
+                    // l'app disegna sotto le barre di sistema, e senza quella riga
+                    // i due tasti finivano dietro la fascia dei comandi — indietro,
+                    // home, recenti — sui telefoni che la tengono a pulsanti. E' la
+                    // stessa cura gia' usata da Avviso, Menu e Statistiche: era
+                    // questo l'unico punto in basso a restarne scoperto. Un numero
+                    // fisso non andrebbe bene, perche' quella fascia e' alta il
+                    // doppio a pulsanti rispetto a quando si naviga a gesti, e su
+                    // chi non ce l'ha affatto sposterebbe i tasti per niente.
                     Row(
-                        Modifier.align(Alignment.BottomEnd).padding(20.dp),
+                        Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         FilledTonalIconButton(onClick = { elenchiAperti = true }) {
@@ -223,8 +241,17 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (menuAperto) {
+                        // contato all'apertura e non a ogni ricomposizione: sono
+                        // tre `count(*)`, rapidi ma pur sempre letture da disco
+                        var statoIndice by remember { mutableStateOf("controllo l'indice…") }
+                        LaunchedEffect(Unit) {
+                            statoIndice = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                indice.diagnostica()
+                            }
+                        }
                         Menu(
                             indiceDisponibile = indice.disponibile,
+                            statoIndice = statoIndice,
                             onElenchi = {
                                 menuAperto = false
                                 elenchiAperti = true
@@ -250,7 +277,33 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (statisticheAperte) {
-                        Statistiche(statoUtente, onChiudi = { statisticheAperte = false })
+                        Statistiche(
+                            statoUtente,
+                            onApri = { stato, tipo ->
+                                statisticheAperte = false
+                                marcati = stato to tipo
+                            },
+                            onChiudi = { statisticheAperte = false },
+                        )
+                    }
+
+                    marcati?.let { (stato, tipo) ->
+                        SchermataMarcati(
+                            indice = indice,
+                            regioni = regioni,
+                            statoUtente = statoUtente,
+                            statoIniziale = stato,
+                            tipoIniziale = tipo,
+                            onImposta = { voce, s ->
+                                impostaStato(voce.tipo, voce.codice, s.chiave)
+                            },
+                            onApri = { voce ->
+                                marcati = null
+                                selezione = null
+                                volaSu(voce)
+                            },
+                            onChiudi = { marcati = null },
+                        )
                     }
 
                     avviso?.let { testo ->
@@ -380,8 +433,23 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun volaSu(lat: Double, lon: Double) {
-        webView?.evaluateJavascript("window.volaDaApp($lat, $lon)", null)
+    private fun volaSu(lat: Double, lon: Double, zoom: Double = 9.0) {
+        webView?.evaluateJavascript("window.volaDaApp($lat, $lon, $zoom)", null)
+    }
+
+    /**
+     * Porta la mappa su una voce di elenco, se sa dove si trova.
+     *
+     * Le nazioni **non** lo sanno: nell'indice non hanno coordinate, e volare a
+     * (0, 0) porterebbe nel Golfo di Guinea. Li' il tocco non fa niente, che e'
+     * meglio di un salto in mezzo all'oceano.
+     *
+     * Lo zoom cambia con cio' che si apre: una citta' si vuole vedere da vicino,
+     * una regione va inquadrata intera, e sono due distanze diverse.
+     */
+    private fun volaSu(voce: Voce) {
+        if (voce.lat == 0.0 && voce.lon == 0.0) return
+        volaSu(voce.lat, voce.lon, if (voce.tipo == "regions") 5.5 else 9.0)
     }
 
     private fun regioni(codice: String, accendi: Boolean) {

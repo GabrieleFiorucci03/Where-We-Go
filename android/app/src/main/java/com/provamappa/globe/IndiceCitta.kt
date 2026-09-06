@@ -14,9 +14,14 @@ data class Voce(
     val lat: Double = 0.0,
     val lon: Double = 0.0,
     /**
-     * Solo per le nazioni: le citta' sono indicizzate per ISO2 mentre la chiave
-     * della nazione e' l'ISO3. Sta qui e non in una mappa a parte perche' serve
-     * esattamente a chi ha la voce in mano.
+     * Il codice a due lettere del paese: per una nazione il **suo**, per una
+     * citta' quello del paese che la contiene.
+     *
+     * Serve perche' le citta' sono indicizzate per ISO2 mentre la chiave di una
+     * nazione e' l'ISO3, e perche' l'elenco di cio' che si e' marcato si filtra
+     * per nazione — e la chiave di una citta', `g:<geonameid>`, non dice dove
+     * sia. Lo valorizzano [IndiceCitta.nazioni], [IndiceCitta.cerca] e
+     * [IndiceCitta.cittaPerId]; altrove resta vuoto perche' non servirebbe.
      */
     val iso2: String = "",
 )
@@ -36,6 +41,9 @@ class IndiceCitta(context: Context) {
 
     private val db: SQLiteDatabase?
 
+    /** Il motivo per cui l'indice non si e' aperto, se non si e' aperto. */
+    private var errore: String = "motivo sconosciuto"
+
     init {
         db = try {
             val f = copiaSeServe(context)
@@ -49,6 +57,7 @@ class IndiceCitta(context: Context) {
             aperto
         } catch (e: Exception) {
             Log.e(TAG, "indice non apribile: elenchi e ricerca resteranno vuoti", e)
+            errore = "${e.javaClass.simpleName}: ${e.message}"
             null
         }
     }
@@ -58,9 +67,16 @@ class IndiceCitta(context: Context) {
      * differenza dei PMTiles che invece si leggono in posto (§4.2). Quindi al
      * primo avvio l'indice si copia fuori una volta sola.
      *
-     * Il confronto e' sulla dimensione, non su una versione scritta a mano:
-     * rigenerando l'indice la dimensione cambia, e ricordarsi di alzare un
-     * numero e' esattamente il genere di cosa che ci si dimentica.
+     * Il confronto e' sulla dimensione **e sugli ultimi byte**, non su una
+     * versione scritta a mano: ricordarsi di alzare un numero e' esattamente il
+     * genere di cosa che ci si dimentica.
+     *
+     * Gli ultimi byte servono perche' la sola dimensione non basta. SQLite alloca
+     * a pagine da 4 KB: rigenerando l'indice con sette nazioni in piu' e le stesse
+     * 440.273 citta', il file puo' venire **identico nella lunghezza** e diverso
+     * nel contenuto. In quel caso la copia vecchia restava, e l'app cercava in un
+     * database di due settimane prima senza che niente lo dicesse. Leggere la
+     * coda dei due file costa qualche microsecondo e toglie di mezzo il dubbio.
      */
     private fun copiaSeServe(context: Context): File {
         val dest = File(context.filesDir, NOME)
@@ -71,7 +87,7 @@ class IndiceCitta(context: Context) {
         // openFd solleva un'eccezione. Costava l'indice intero: la ricerca e
         // l'elenco delle nazioni rispondevano "indice non disponibile".
         val attesa = context.assets.open(NOME).use { it.available().toLong() }
-        if (dest.isFile && dest.length() == attesa) return dest
+        if (dest.isFile && dest.length() == attesa && codaUguale(context, dest, attesa)) return dest
 
         Log.i(TAG, "copio l'indice dagli asset (${attesa / 1048576} MB)")
         val t0 = System.currentTimeMillis()
@@ -82,7 +98,58 @@ class IndiceCitta(context: Context) {
         return dest
     }
 
+    /** Gli ultimi [CODA] byte dell'asset e della copia coincidono? */
+    private fun codaUguale(context: Context, dest: File, dimensione: Long): Boolean = try {
+        val daAsset = ByteArray(CODA)
+        context.assets.open(NOME).use { input ->
+            input.skip(dimensione - CODA)
+            var letti = 0
+            while (letti < CODA) {
+                val n = input.read(daAsset, letti, CODA - letti)
+                if (n < 0) break
+                letti += n
+            }
+        }
+        val daDisco = ByteArray(CODA)
+        java.io.RandomAccessFile(dest, "r").use { raf ->
+            raf.seek(dimensione - CODA)
+            raf.readFully(daDisco)
+        }
+        daAsset.contentEquals(daDisco)
+    } catch (e: Exception) {
+        Log.w(TAG, "confronto della coda non riuscito, ricopio", e)
+        false
+    }
+
     val disponibile: Boolean get() = db != null
+
+    /**
+     * Cosa e' successo all'indice, in una riga da mostrare all'utente.
+     *
+     * Esiste perche' i guasti di questo pezzo sono **muti**: `interroga` cattura
+     * le eccezioni e restituisce una lista vuota, e una lista vuota a schermo e'
+     * indistinguibile da "non ho trovato niente". Senza un cavo USB e senza
+     * logcat non c'era modo di sapere se il database non si fosse aperto, si
+     * fosse aperto vuoto, o funzionasse benissimo e il difetto stesse altrove.
+     *
+     * I numeri sono contati adesso, non scritti a mano: e' tutto il punto.
+     */
+    fun diagnostica(): String {
+        val d = db ?: return "indice non aperto — $errore"
+        return try {
+            fun conta(tabella: String) =
+                d.rawQuery("SELECT count(*) FROM $tabella", null).use { c ->
+                    c.moveToFirst(); c.getInt(0)
+                }
+            val n = conta("nazione")
+            val c = conta("citta")
+            val f = conta("citta_fts")
+            "%,d nazioni · %,d città · %,d nell'indice di ricerca".format(n, c, f)
+        } catch (e: Exception) {
+            "database aperto ma illeggibile: ${e.javaClass.simpleName} — ${e.message}"
+        }
+    }
+
 
     /** Tutte le nazioni, in ordine alfabetico italiano. */
     fun nazioni(): List<Voce> = interroga(
@@ -150,6 +217,30 @@ class IndiceCitta(context: Context) {
         return nazioni + citta
     }
 
+    /**
+     * Le citta' con questi identificativi, per gli elenchi di cio' che l'utente
+     * ha marcato: li' si parte dalle chiavi salvate — `g:<geonameid>` — e
+     * mancano i nomi, che stanno solo qui.
+     *
+     * A blocchi di 900 perche' SQLite si ferma a 999 parametri per istruzione, e
+     * chi ha segnato mille citta' e' esattamente la persona che apre l'elenco.
+     */
+    fun cittaPerId(ids: List<Long>): List<Voce> {
+        if (ids.isEmpty()) return emptyList()
+        val out = ArrayList<Voce>(ids.size)
+        for (blocco in ids.chunked(900)) {
+            val segnaposto = blocco.joinToString(",") { "?" }
+            out += interroga(
+                // `paese` in piu' rispetto alle altre letture di citta': l'elenco
+                // del marcato si filtra per nazione, e la chiave salvata —
+                // `g:<geonameid>` — non dice in che paese si trovi la citta'.
+                "SELECT id, nome, pop, lat, lon, paese FROM citta WHERE id IN ($segnaposto)",
+                *blocco.map { it.toString() }.toTypedArray(),
+            ) { c -> voceCitta(c).copy(iso2 = c.getString(5) ?: "") }
+        }
+        return out
+    }
+
     private fun voceCitta(c: android.database.Cursor): Voce {
         val pop = c.getInt(2)
         return Voce(
@@ -183,5 +274,8 @@ class IndiceCitta(context: Context) {
     companion object {
         const val TAG = "IndiceCitta"
         const val NOME = "citta.db"
+
+        /** Quanti byte di coda confrontare per decidere se la copia e' quella giusta. */
+        const val CODA = 4096
     }
 }

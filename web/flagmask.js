@@ -558,7 +558,21 @@ export async function renderFlagMask(polys, bbox, iso2, opzioni = {}) {
 
   ctx.restore();
   return {
-    url: canvas.toDataURL('image/png'),
+    /**
+     * Il PNG, ma **solo se qualcuno lo chiede**.
+     *
+     * Era `url: canvas.toDataURL('image/png')`, calcolato sempre, ed era il
+     * costo dominante di tutta la funzione: comprimere in deflate fino a
+     * quattro megabyte di RGBA sul thread principale, per poi consegnarli a
+     * MapLibre che li ridecodificava subito dopo. Lo stesso lavoro due volte.
+     *
+     * Sulla mappa nessuno lo chiede piu' — il canvas diventa texture cosi'
+     * com'e', tramite un `canvas source` — e il getter resta per compare.html
+     * e per la diagnostica, dove si paga una volta sola e non da' fastidio.
+     */
+    get url() {
+      return canvas.toDataURL('image/png');
+    },
     bbox,
     size: `${w}x${h}`,
     fit: nota,

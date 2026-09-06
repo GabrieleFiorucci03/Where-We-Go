@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Sfondo dell'icona adattiva. Bianco perche' il globo e' saturo e scuro
-         sul bordo: su bianco stacca, su un blu qualsiasi si impasterebbe con
-         gli oceani.
+    <!-- Sfondo dell'icona adattiva, **generato** da tools/genera_icona.js: e' il
+         colore del badge campionato dalla sorgente, non una scelta a mano. Deve
+         essere quello, altrimenti dove il launcher mostra piu' dei 108dp del
+         primo piano si vedrebbe una cornice di un altro colore.
 
-         Si vede solo agli angoli, e solo sui launcher con maschera non tonda:
-         dove la maschera e' un cerchio il globo lo copre tutto. -->
-    <color name="sfondo_icona">#FFFFFFFF</color>
+         Lo si tocca solo cambiando la sorgente dell'icona e rilanciando lo script. -->
+    <color name="sfondo_icona">#FF18293F</color>
 </resources>

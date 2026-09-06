@@ -119,6 +119,186 @@ convert('countries_50m.geojson', 'countries.geojson', 3, (p) => {
   };
 });
 
+/**
+ * Territori da staccare dallo stato che li ingloba.
+ *
+ * In `admin_0_countries` di Natural Earth sono poligoni della madre, perche'
+ * quel livello elenca gli **stati sovrani** e non le loro unita' costitutive.
+ * Sulla mappa il risultato e' che toccando la Guadalupa si marca la Francia, e
+ * sopra ci finisce il tricolore steso su tutto l'insieme.
+ *
+ * Il criterio per stare in questa tabella non e' "e' un'isola lontana" —
+ * altrimenti ci finirebbe mezzo mondo — ma **non esistere a nessun livello**:
+ * ne' come nazione, ne' come regione. Le Canarie e le Azzorre non ci sono
+ * perche' GADM le ha come regioni di Spagna e Portogallo, quindi si raggiungono
+ * gia' accendendo il dettaglio regionale; la Groenlandia e Porto Rico nemmeno,
+ * perche' nei dati sono gia' nazioni a se'. Questi sette invece erano invisibili
+ * ovunque, e le loro citta' — 179 in tutto — restavano orfane nell'indice.
+ *
+ * Il taglio e' **geografico**: si staccano i poligoni della madre che cadono
+ * dentro uno dei riquadri. Dire "il ventottesimo poligono della Norvegia"
+ * funzionerebbe fino al prossimo aggiornamento di Natural Earth, dove l'ordine
+ * non e' garantito da niente; il riquadro invece descrive cio' che si vuole
+ * davvero, e se un giorno non trovasse nulla lo dice invece di tagliare via il
+ * pezzo sbagliato in silenzio.
+ *
+ * **Le suddivisioni non si aggiungono**: GADM livello 1 non ne ha per nessuno di
+ * questi, quindi `data/regions/index.json` non li elenchera' e la scheda non
+ * offrira' il dettaglio regionale. E' il comportamento normale di un centinaio
+ * di paesi, non un caso da gestire a parte.
+ *
+ * I riquadri sono piu' d'uno dove il territorio e' sparso: e non devono
+ * sovrapporsi fra voci diverse, perche' due che rivendicano lo stesso poligono
+ * se lo prenderebbero in ordine di tabella, cioe' per caso.
+ */
+const TERRITORI_STACCATI = [
+  {
+    madre: 'FRA',
+    code: 'GUF',
+    name: 'Guiana francese',
+    // minuscolo come tutti gli altri: e' il nome del file in web/flags/
+    iso2: 'gf',
+    continent: 'South America',
+    riquadri: [[-60, 0, -50, 10]], // minLon, minLat, maxLon, maxLat
+  },
+  {
+    madre: 'FRA',
+    code: 'GLP',
+    name: 'Guadalupa',
+    iso2: 'gp',
+    continent: 'North America',
+    // Stretto apposta verso il basso: la Martinica sta appena sotto, fra 14,43 e
+    // 14,88, ed e' la voce qui sotto. Marie-Galante e Les Saintes, che invece
+    // della Guadalupa fanno parte, stanno a 15,89 e ci rientrano.
+    riquadri: [[-62, 15.5, -61, 17]],
+  },
+  {
+    madre: 'FRA',
+    code: 'MTQ',
+    name: 'Martinica',
+    iso2: 'mq',
+    continent: 'North America',
+    // un'isola sola, fra 14,43 e 14,88: il riquadro le sta largo di mezzo grado
+    // per lato e si ferma ben prima della Guadalupa, che comincia a 15,89
+    riquadri: [[-61.5, 14, -60.5, 15.2]],
+  },
+  {
+    madre: 'FRA',
+    code: 'REU',
+    name: 'Riunione',
+    iso2: 're',
+    // Africa e non Europe come la madre: nel modello a sette continenti le due
+    // isole dell'Oceano Indiano stanno li'
+    continent: 'Africa',
+    riquadri: [[54.5, -22, 56.5, -20]],
+  },
+  {
+    madre: 'FRA',
+    code: 'MYT',
+    name: 'Mayotte',
+    iso2: 'yt',
+    continent: 'Africa',
+    riquadri: [[44.5, -13.5, 45.8, -12]],
+  },
+  {
+    madre: 'NLD',
+    code: 'BES',
+    name: 'Caraibi olandesi',
+    iso2: 'bq',
+    continent: 'North America',
+    // Bonaire a 12,0 piu' Saba e Sint Eustatius a 17,5: un riquadro solo li
+    // prende tutti e tre, perche' fra i due estremi non c'e' nient'altro di
+    // olandese. Curacao, Aruba e Sint Maarten sono gia' nazioni a se' nei dati,
+    // quindi non sono poligoni dei Paesi Bassi e non rischiano di finirci dentro.
+    riquadri: [[-69, 11.5, -62.5, 17.9]],
+  },
+  {
+    madre: 'NOR',
+    code: 'SJM',
+    // ISO 3166 assegna un codice solo a Svalbard **e** Jan Mayen, ed e' lo
+    // stesso che usano la bandiera (`sj.svg`) e GeoNames per le citta'. Tenerli
+    // separati vorrebbe dire un'entita' chiamata "Svalbard e Jan Mayen" che di
+    // Jan Mayen non contiene niente.
+    name: 'Svalbard e Jan Mayen',
+    iso2: 'sj',
+    continent: 'Europe',
+    riquadri: [
+      // Svalbard: nove poligoni sopra i 74 gradi, da Bjornoya a Kvitoya. La
+      // terraferma norvegese si ferma a 71,18, quindi la soglia a 74 non tocca
+      // nulla del continente.
+      [10, 74, 34, 81],
+      // Jan Mayen, dall'altra parte: e' l'unico poligono norvegese a longitudine
+      // negativa, e un riquadro unico con Svalbard si porterebbe via le isole di
+      // Finnmark che stanno fra 70,9 e 71,14.
+      [-10, 70.5, -7.5, 71.5],
+    ],
+  },
+];
+
+/**
+ * Stacca dalle rispettive madri i territori di [TERRITORI_STACCATI].
+ *
+ * Si lavora sul file gia' scritto da `convert`, in sequenza: ogni territorio
+ * toglie i propri poligoni da quelli che restano alla madre, cosi' due riquadri
+ * non possono rivendicare lo stesso pezzo.
+ */
+function staccaTerritori() {
+  const file = path.join(DATA, 'countries.geojson');
+  if (!fs.existsSync(file)) return;
+  const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+  let prossimoId = Math.max(...json.features.map((f) => f.id || 0)) + 1;
+  const restano = {};
+
+  for (const t of TERRITORI_STACCATI) {
+    if (json.features.some((f) => f.properties.code === t.code)) {
+      console.log(`  ${t.name}: gia' separata`);
+      continue;
+    }
+
+    const madre = json.features.find((f) => f.properties.code === t.madre);
+    if (!madre || madre.geometry.type !== 'MultiPolygon') {
+      console.error(`  ${t.name}: ${t.madre} non e' una MultiPolygon, niente da staccare`);
+      continue;
+    }
+
+    const dentro = (poly) =>
+      t.riquadri.some(([minLon, minLat, maxLon, maxLat]) =>
+        poly.every((anello) =>
+          anello.every(([x, y]) => x >= minLon && x <= maxLon && y >= minLat && y <= maxLat)
+        )
+      );
+
+    const suoi = madre.geometry.coordinates.filter(dentro);
+    if (!suoi.length) {
+      console.error(`  ${t.name}: nessun poligono nei riquadri, dati cambiati?`);
+      continue;
+    }
+    madre.geometry.coordinates = madre.geometry.coordinates.filter((p) => !dentro(p));
+    restano[t.madre] = madre.geometry.coordinates.length;
+
+    json.features.push({
+      type: 'Feature',
+      id: prossimoId++,
+      properties: {
+        code: t.code,
+        name: t.name,
+        iso2: t.iso2,
+        continent: t.continent,
+      },
+      geometry: { type: 'MultiPolygon', coordinates: suoi },
+    });
+    console.log(`  ${t.name}: ${suoi.length} poligono/i staccati da ${t.madre}`);
+  }
+
+  for (const [madre, n] of Object.entries(restano)) {
+    console.log(`  a ${madre} ne restano ${n}`);
+  }
+  fs.writeFileSync(file, JSON.stringify(json));
+}
+
+staccaTerritori();
+
 // --- Regioni ---------------------------------------------------------------
 // NON si generano piu' da Natural Earth. Il suo "admin-1" non e' un livello
 // coerente: per Germania e USA sono Laender e stati, ma per Italia e Francia

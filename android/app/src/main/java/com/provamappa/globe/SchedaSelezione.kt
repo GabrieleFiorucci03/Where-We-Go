@@ -3,11 +3,14 @@ package com.provamappa.globe
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Layers
@@ -25,14 +28,24 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.decode.SvgDecoder
+import coil.request.ImageRequest
 
 /** I tre stati, con il nome che l'utente legge (§9.0). Le chiavi restano inglesi. */
 enum class Stato(val chiave: String, val etichetta: String, val colore: Color) {
     NON_VISITATA("none", "Non visitata", Color(0xFFD33333)),
-    IN_PROGRAMMA("wanted", "In programma", Color(0xFFF08A24)),
+    // "Da visitare" e non "in programma" come in §9.0: sul pulsante dice cosa si
+    // sta per fare invece di nominare uno stato, ed e' la coppia naturale di
+    // "Visitata" accanto. La chiave salvata resta `wanted`, quindi i backup e i
+    // dati di prima continuano a leggersi.
+    IN_PROGRAMMA("wanted", "Da visitare", Color(0xFFF08A24)),
     VISITATA("visited", "Visitata", Color(0xFF2E9E4F));
 
     companion object {
@@ -78,6 +91,15 @@ fun SchedaSelezione(
         ) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Solo per le nazioni. Su una regione o una citta' quella
+                    // del paese ripeterebbe cio' che la riga di gerarchia sotto
+                    // gia' dice; e tre nazioni fra quelle nei dati — Somaliland,
+                    // Cipro del Nord, Kashmir — non hanno una bandiera
+                    // riconosciuta e arrivano con `iso2` vuoto. In entrambi i
+                    // casi resta il solo nome, senza buchi nel layout.
+                    if (s.tipo == "countries" && s.iso2.isNotEmpty()) {
+                        Bandiera(s.iso2, Modifier.padding(end = 12.dp))
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(
                             s.nome,
@@ -157,6 +179,42 @@ fun SchedaSelezione(
             }
         }
     }
+}
+
+/**
+ * La bandiera di una nazione, dagli stessi SVG che usa la mappa: negli asset
+ * stanno in `flags/`, perche' l'intera cartella `web/` e' una sorgente di asset
+ * (vedi build.gradle.kts). Nessun secondo insieme di immagini da tenere allineato.
+ *
+ * `ContentScale.Fit` dentro un riquadro fisso, e non una misura imposta: le
+ * proporzioni delle bandiere non sono affatto costanti — la Svizzera e'
+ * quadrata, il Nepal e' piu' alto che largo, gli Stati Uniti sono quasi 2:1 — e
+ * una cornice unica le deformerebbe tutte tranne le 3:2. Cosi' ognuna entra con
+ * le proprie, e la riga non cambia altezza a seconda del paese selezionato.
+ *
+ * Il bordo non e' decorazione: le bandiere che finiscono in bianco sul bordo —
+ * Giappone, Finlandia, Israele — su una scheda bianca altrimenti si spezzano.
+ */
+@Composable
+private fun Bandiera(iso2: String, modifier: Modifier = Modifier) {
+    val angoli = RoundedCornerShape(3.dp)
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data("file:///android_asset/flags/$iso2.svg")
+            // Coil da solo non decodifica gli SVG: il decoder va chiesto qui,
+            // sulla singola richiesta, invece di configurare un ImageLoader
+            // globale che la galleria di Commons non usa.
+            .decoderFactory(SvgDecoder.Factory())
+            .build(),
+        // decorativa: il nome accanto dice gia' di che paese si tratta, e
+        // leggere "bandiera dell'Italia · Italia" sarebbe solo rumore
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .size(width = 34.dp, height = 24.dp)
+            .clip(angoli)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, angoli),
+    )
 }
 
 /** Vedi il commento dentro [SchedaSelezione]: serve solo all'animazione d'uscita. */

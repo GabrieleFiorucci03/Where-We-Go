@@ -84,4 +84,11 @@ dependencies {
     // HttpURLConnection e org.json, che ci sono gia'; la cache delle immagini
     // scritta a mano invece no, ed e' la parte che si sbaglia.
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Le bandiere sono SVG — gli stessi 255 file che usa la mappa — e Coil da
+    // solo non li sa decodificare: il decoder sta in un artefatto a parte. Meglio
+    // che rasterizzarle in pipeline verso altrettanti PNG, che vorrebbe dire un
+    // secondo insieme di file da tenere allineato al primo per ottenere immagini
+    // peggiori — un SVG si disegna nitido a qualunque densita' di schermo.
+    implementation("io.coil-kt:coil-svg:2.7.0")
 }

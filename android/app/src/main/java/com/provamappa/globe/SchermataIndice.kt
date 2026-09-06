@@ -197,48 +197,5 @@ fun SchermataIndice(
     }
 }
 
-/**
- * Riga con i tre stati **diretti**, non a ciclo.
- *
- * Un tocco solo per marcare, come nella scheda della mappa: il ciclo obbligava
- * a passare per stati che non si volevano e rendeva impossibile toccare una
- * voce senza modificarla.
- */
-@Composable
-private fun RigaVoce(
-    voce: Voce,
-    stato: Stato,
-    onImposta: (Stato) -> Unit,
-    onApri: () -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onApri).padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(voce.nome, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (voce.sotto.isNotEmpty()) {
-                Text(
-                    voce.sotto,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (s in Stato.entries) {
-                val scelto = s == stato
-                Box(
-                    Modifier
-                        .size(if (scelto) 26.dp else 20.dp)
-                        .clip(CircleShape)
-                        .background(if (scelto) s.colore else s.colore.copy(alpha = 0.18f))
-                        .clickable { onImposta(s) },
-                )
-            }
-        }
-    }
-}
-
 /** Le citta' sono indicizzate per ISO2, le nazioni hanno l'ISO3 come chiave. */
 private fun isoDi(v: Voce): String = v.iso2

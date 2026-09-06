@@ -85,6 +85,77 @@ if (perApp) {
   document.documentElement.classList.add('per-app');
 }
 
+/**
+ * Quanto ci si puo' permettere di disegnare su questo telefono.
+ *
+ * Il globo gira liscio sui dispositivi recenti e a scatti su quelli vecchi, e
+ * la differenza non e' un costo solo ma tre che si sommano: i pixel da riempire
+ * a ogni fotogramma — che crescono col **quadrato** del `devicePixelRatio` —, le
+ * texture delle bandiere tenute vive, e la finezza con cui ciascuna viene
+ * rasterizzata. Si decide qui una volta per tutte, e il resto del file legge
+ * questo oggetto invece di rifare il ragionamento in tre punti diversi.
+ *
+ * Le sonde sono due, `deviceMemory` e `hardwareConcurrency`: grossolane — la
+ * prima e' arrotondata a potenze di due e su qualche browser manca del tutto —
+ * ma sono le uniche disponibili senza indovinare la fascia dal nome della GPU,
+ * che vorrebbe una tabella di modelli Adreno e Mali da tenere aggiornata a mano.
+ * Se non risponde nessuna delle due si sceglie il profilo pieno: sbagliare
+ * verso il telefono buono costa poco, sbagliare verso l'altro si vede.
+ *
+ * La soglia sbaglia in un caso noto: `deviceMemory` arrotonda per difetto a
+ * potenze di due, quindi un telefono da 6 GB si dichiara da 4 e finisce sul
+ * profilo leggero pur non meritandolo. Costa un globo un po' meno nitido su un
+ * dispositivo che reggeva, che e' il verso giusto in cui sbagliare.
+ *
+ * Si puo' forzare a mano — `?profilo=leggero`, oppure
+ * `localStorage.setItem('wherewego.profilo', 'pieno')` e ricarica, che e' la via
+ * praticabile **dentro l'app**, dove l'indirizzo della pagina e' fisso. E' anche
+ * l'unico modo di misurare quanto vale: provarli tutti e due sullo stesso
+ * telefono, guardando `metricheBandiere()`.
+ */
+const PROFILO = (() => {
+  const forzato =
+    new URLSearchParams(location.search).get('profilo') ||
+    (() => {
+      try {
+        return localStorage.getItem('wherewego.profilo');
+      } catch (e) {
+        return null;
+      }
+    })();
+  const memoria = navigator.deviceMemory || 0; // GB, 0 se il browser tace
+  const nuclei = navigator.hardwareConcurrency || 0;
+  const debole =
+    forzato === 'leggero' ||
+    (forzato !== 'pieno' && ((memoria > 0 && memoria <= 4) || (nuclei > 0 && nuclei <= 4)));
+
+  const p = debole
+    ? {
+        nome: 'leggero',
+        // Il costo per fotogramma e' proporzionale ai pixel disegnati, e il
+        // devicePixelRatio li moltiplica al quadrato: passare da 3 a 1,5 vuol
+        // dire un quarto dei pixel. E' il singolo numero che pesa di piu' su una
+        // GPU vecchia, e a occhio si nota molto meno di quanto si teme.
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
+        maxLivelliBandiera: 40,
+        latoMax: { countries: 512, regions: 256 },
+      }
+    : {
+        nome: 'pieno',
+        // `undefined` e non un numero: MapLibre ricade sul devicePixelRatio
+        // nativo, che sui telefoni recenti va benissimo e va lasciato stare
+        pixelRatio: undefined,
+        maxLivelliBandiera: 120,
+        latoMax: { countries: 1024, regions: 512 },
+      };
+
+  console.log(
+    `[profilo] ${p.nome}${forzato ? ' (forzato)' : ''} — memoria ${memoria || '?'} GB, ` +
+      `${nuclei || '?'} nuclei, dpr ${window.devicePixelRatio || 1} -> ${p.pixelRatio ?? 'nativo'}`
+  );
+  return p;
+})();
+
 /** Riga di contesto sotto il nome: "Lombardia · Italia". */
 function gerarchiaDi(kind, feature) {
   const p = feature.properties;
@@ -151,6 +222,18 @@ function segnalaSelezione(hit) {
   // dell'Italia non sono «l'Italia» — e infatti li' si va sul web.
   const punto = kind === 'places' ? hit.geometry?.coordinates : null;
 
+  // Il codice a due lettere della bandiera, per la scheda nativa. Si prende dal
+  // GeoJSON delle sagome e non dalla feature toccata: quella viene dai tile, che
+  // portano solo le proprieta' scelte in pipeline, mentre `countries.geojson` e'
+  // in memoria dall'avvio e l'iso2 ce l'ha per costruzione — e' lo stesso da cui
+  // le bandiere sulla mappa prendono il proprio.
+  //
+  // Tre nazioni su 242 non ne hanno: Somaliland, Cipro del Nord e Kashmir, che
+  // una bandiera riconosciuta non ce l'hanno. Li' resta stringa vuota e la
+  // scheda mostra il solo nome.
+  const iso2 =
+    kind === 'countries' ? byCode.countries.get(codice)?.properties?.iso2 || '' : '';
+
   window.AndroidUI.onFeatureTap(
     kind,
     String(codice),
@@ -161,7 +244,8 @@ function segnalaSelezione(hit) {
     kind === 'countries' && regioniAttive.has(codice),
     terminiRicerca(kind, hit),
     punto ? punto[1] : 0,
-    punto ? punto[0] : 0
+    punto ? punto[0] : 0,
+    iso2
   );
 }
 
@@ -223,35 +307,43 @@ window.ripristinaDaApp = (json) => {
 /**
  * Il globo come immagine PNG, in base64 (§10).
  *
- * Si forza un ridisegno con `triggerRepaint` e si aspetta il fotogramma
- * successivo: `preserveDrawingBuffer` conserva l'ultimo disegnato, ma se la
- * mappa e' ferma da un po' quel disegno potrebbe essere anteriore all'ultima
- * modifica di stato — si esporterebbe una mappa vecchia di qualche secondo.
+ * Si forza un ridisegno con `triggerRepaint` — la mappa potrebbe essere ferma
+ * da prima dell'ultima modifica, e si esporterebbe un globo vecchio di qualche
+ * secondo — e si legge il canvas **dentro** l'evento `render`.
  */
 window.immagineDaApp = () =>
   new Promise((risolvi) => {
     map.triggerRepaint();
     map.once('render', () => {
-      requestAnimationFrame(() => {
-        try {
-          risolvi(map.getCanvas().toDataURL('image/png').split(',')[1] || '');
-        } catch (e) {
-          console.error('export immagine fallito', e);
-          risolvi('');
-        }
-      });
+      // Sincrono, qui dentro. MapLibre emette `render` subito dopo aver
+      // disegnato e prima di restituire il controllo: e' l'unico istante in cui
+      // il buffer WebGL si puo' rileggere senza `preserveDrawingBuffer`. C'era
+      // invece un `requestAnimationFrame` in mezzo, e rimandare anche di un solo
+      // fotogramma e' proprio cio' che rendeva necessaria quell'opzione — con il
+      // suo costo su ogni fotogramma della vita dell'app, per una funzione usata
+      // una volta ogni tanto.
+      try {
+        risolvi(map.getCanvas().toDataURL('image/png').split(',')[1] || '');
+      } catch (e) {
+        console.error('export immagine fallito', e);
+        risolvi('');
+      }
     });
   });
 
 /**
  * Porta la mappa su un punto scelto da un elenco nativo.
  *
- * Lo zoom e' 9: abbastanza vicino da vedere la citta' e i suoi dintorni, e
- * oltre la soglia da cui compaiono i puntini, altrimenti si arriverebbe su una
- * mappa vuota proprio nel punto cercato.
+ * Lo zoom predefinito e' 9: abbastanza vicino da vedere la citta' e i suoi
+ * dintorni, e oltre la soglia da cui compaiono i puntini, altrimenti si
+ * arriverebbe su una mappa vuota proprio nel punto cercato.
+ *
+ * Gli elenchi lo passano diverso a seconda di cosa si apre — una regione va
+ * inquadrata intera, e a 9 se ne vedrebbe un angolo — quindi e' un argomento e
+ * non piu' una costante. Chi non lo passa ottiene il 9 di prima.
  */
-window.volaDaApp = (lat, lon) => {
-  map.flyTo({ center: [lon, lat], zoom: 9, duration: 1200 });
+window.volaDaApp = (lat, lon, zoom = 9) => {
+  map.flyTo({ center: [lon, lat], zoom, duration: 1200 });
 };
 
 /** Accende o spegne il dettaglio regionale, su richiesta della scheda nativa. */
@@ -390,8 +482,22 @@ const COLOR = {
   city: '#d33333',
 };
 
-/** Soglie di zoom che governano il passaggio fra i tre livelli. */
-const Z = { regionStart: 3.5, regionFull: 5, cityStart: 4, cityFull: 5 };
+/**
+ * Soglie di zoom che governano il passaggio fra i tre livelli.
+ *
+ * `regione` e' **una sola** soglia, e prima erano due: le regioni entravano
+ * dissolvendosi da 3,5 a 5, e nel mezzo convivevano con la nazione mezza
+ * trasparente sotto. Il passaggio adesso e' netto — sotto la soglia lo stato,
+ * sopra le sue regioni — e questo semplifica tre cose insieme: non c'e' piu' un
+ * intervallo in cui si vedono due cose sovrapposte, non c'e' piu' la fascia in
+ * cui si vedeva una regione senza poterla toccare (la soglia del tocco e' la
+ * stessa del disegno, per costruzione), e la GPU non deve piu' fondere due
+ * livelli per un giro e mezzo di zoom.
+ *
+ * 4,25 e' il punto in cui la vecchia dissolvenza era a meta': lo stesso momento
+ * di prima, senza la sfumatura attorno.
+ */
+const Z = { regione: 4.25, cityStart: 4, cityFull: 5 };
 
 const STORAGE_KEY = 'provamappa.prototipo.v1';
 
@@ -494,11 +600,45 @@ function specchiaStato() {
   }
 }
 
+/** Quanti blocchi sono aperti, e se dentro e' stato chiesto un salvataggio. */
+let blocchiAperti = 0;
+let salvataggioRimandato = false;
+
 function saveStore() {
+  if (blocchiAperti > 0) {
+    salvataggioRimandato = true;
+    return;
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   // comprese le modifiche indirette, come una nazione che cambia perche' e'
   // cambiata una sua regione (Regola 2 di §8.1)
   specchiaStato();
+}
+
+/**
+ * Esegue una modifica in blocco salvando **una volta sola** alla fine.
+ *
+ * `setStatus` salva a ogni chiamata: per un tocco e' giusto, per un ciclo e'
+ * rovinoso. Marcare la Russia sono ottantatre passaggi, e ciascuno serializzava
+ * l'intero store due volte — una per `localStorage`, che scrive su disco in modo
+ * sincrono, e una per lo specchio che attraversa il ponte JNI verso Kotlin.
+ * Centosessantasei serializzazioni e ottantatre scritture per un'operazione che
+ * ne chiede una: era li' che l'app si fermava per secondi.
+ *
+ * Si contano i blocchi invece di tenere un booleano perche' si annidano:
+ * `impostaPaese` chiama `setStatus`, che a sua volta puo' propagare.
+ */
+async function inBlocco(azione) {
+  blocchiAperti++;
+  try {
+    return await azione();
+  } finally {
+    blocchiAperti--;
+    if (blocchiAperti === 0 && salvataggioRimandato) {
+      salvataggioRimandato = false;
+      saveStore();
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -506,6 +646,31 @@ function saveStore() {
 // Geometria, ritaglio e modalita' di adattamento vivono in flagmask.js, cosi'
 // che la pagina di confronto (compare.html) usi esattamente lo stesso codice.
 // ---------------------------------------------------------------------------
+
+/**
+ * Tempi di rasterizzazione, per rispondere con un numero invece che a
+ * impressione quando la mappa sembra lenta. Dalla console della WebView:
+ * `metricheBandiere()`, e `metricheBandiere(true)` per ripartire da zero.
+ */
+const metriche = { n: 0, ms: 0, peggiore: 0 };
+
+window.metricheBandiere = (azzera) => {
+  const r = {
+    profilo: PROFILO.nome,
+    maschere: metriche.n,
+    totaleMs: Math.round(metriche.ms),
+    mediaMs: metriche.n ? +(metriche.ms / metriche.n).toFixed(1) : 0,
+    peggioreMs: Math.round(metriche.peggiore),
+    livelliVivi: [...activeFlags.values()].reduce((somma, v) => somma + v.ids.length, 0),
+    inCoda: codaBandiere.size,
+  };
+  if (azzera) {
+    metriche.n = 0;
+    metriche.ms = 0;
+    metriche.peggiore = 0;
+  }
+  return r;
+};
 
 /**
  * Lato del canvas della maschera, misurato su quanto l'entita' occupa davvero
@@ -530,8 +695,9 @@ const LATO_MIN_BANDIERA = 128;
 
 function latoBandiera(bbox, kind) {
   // le regioni sono molte e piccole: meta' lato significa un quarto dei pixel
-  // da disegnare, e a video non si distingue
-  const max = kind === 'regions' ? 512 : 1024;
+  // da disegnare, e a video non si distingue. Il tetto dipende dal profilo del
+  // dispositivo: sul telefono lento si dimezza ancora (vedi PROFILO).
+  const max = PROFILO.latoMax[kind === 'regions' ? 'regions' : 'countries'];
 
   // larghezza del mondo in pixel di dispositivo: MapLibre usa tessere da 512 e
   // disegna alla risoluzione vera dello schermo, non a quella CSS — su un
@@ -606,6 +772,7 @@ async function addFlagLayer(kind, feature) {
 
     for (let i = 0; i < bande.length; i++) {
       const banda = bande[i];
+      const tRender = performance.now();
       const rendered = await renderFlagMask(banda.polys, banda.bbox, iso2, {
         proiezione: opts.maskProjection,
         fit: opts.fit,
@@ -617,6 +784,10 @@ async function addFlagLayer(kind, feature) {
         // quindi non c'e' salto di nitidezza fra l'una e l'altra.
         lato: latoBandiera(banda.bbox, kind),
       });
+      const durata = performance.now() - tRender;
+      metriche.n++;
+      metriche.ms += durata;
+      if (durata > metriche.peggiore) metriche.peggiore = durata;
       if (!rendered) continue;
 
       // lo stato puo' essere cambiato mentre rasterizzavamo
@@ -627,8 +798,17 @@ async function addFlagLayer(kind, feature) {
       const [minLon, minLat, maxLon, maxLat] = rendered.bbox;
 
       map.addSource(id, {
-        type: 'image',
-        url: rendered.url,
+        // `canvas` e non `image`: il canvas della maschera diventa texture cosi'
+        // com'e'. Prima passava per un data URL PNG, cioe' una compressione
+        // deflate sul thread principale e una decodifica subito dopo dentro
+        // MapLibre — lo stesso lavoro fatto due volte, e la causa principale
+        // degli scatti sui telefoni lenti.
+        type: 'canvas',
+        canvas: rendered.canvas,
+        // Senza, MapLibre darebbe per scontato un canvas animato: ne
+        // ricaricherebbe la texture a ogni fotogramma e terrebbe la mappa in
+        // ridisegno perpetuo. La maschera invece e' ferma da quando nasce.
+        animate: false,
         coordinates: [
           [minLon, maxLat],
           [maxLon, maxLat],
@@ -680,6 +860,10 @@ async function addFlagLayer(kind, feature) {
 
 function removeFlagLayer(kind, code) {
   const key = `${kind}:${code}`;
+  // Anche quando non c'e' niente da togliere dalla mappa: potrebbe esserci una
+  // richiesta in coda, e servirla dopo che l'entita' e' stata smarcata
+  // rimetterebbe una bandiera che nessuno chiede piu'.
+  codaBandiere.delete(key);
   const voce = activeFlags.get(key);
   if (!voce) return;
   for (const id of voce.ids) {
@@ -795,6 +979,93 @@ function areaVista(bbox) {
 }
 
 /**
+ * Bandiere da disegnare, una per volta e nei momenti liberi.
+ *
+ * Il costo di una singola maschera non era il problema: il problema era che
+ * arrivavano tutte insieme. Un `moveend` dopo un pizzico sull'Europa metteva in
+ * fila venti rasterizzazioni consecutive, e per tutta la loro durata il thread
+ * principale non disegnava piu' niente — lo scatto si sentiva alla **fine** del
+ * gesto, non durante, ed e' la firma di questo comportamento.
+ *
+ * Qui le richieste si accumulano e vengono servite una alla volta, cedendo il
+ * controllo fra l'una e l'altra: il lavoro totale e' lo stesso, ma spalmato su
+ * molti fotogrammi invece che concentrato in uno. Una `Map` e non un array
+ * perche' la stessa entita' puo' essere chiesta due volte prima di essere
+ * servita — succede a ogni panoramica — e va disegnata una volta sola.
+ *
+ * Resta immediata la bandiera che nasce da un tocco: chi marca un paese adesso
+ * deve vederlo adesso, ed e' una sola.
+ */
+const codaBandiere = new Map();
+let codaInCorso = false;
+
+/**
+ * Mette in coda una bandiera. Con `rifai` la richiesta vale anche per
+ * un'entita' che una bandiera ce l'ha gia': e' il caso dell'avvicinamento, dove
+ * la maschera esiste ma e' rimasta troppo grossolana.
+ */
+function accodaBandiera(kind, code, rifai = false) {
+  const key = `${kind}:${code}`;
+  const gia = codaBandiere.get(key);
+  // se una delle due richieste chiedeva di rifare, vince quella: sovrascriverla
+  // con una semplice aggiunta lascerebbe la maschera vecchia dov'e'
+  codaBandiere.set(key, { kind, code, rifai: rifai || !!gia?.rifai });
+  serviCoda();
+}
+
+/**
+ * Cede il thread fino al prossimo momento libero.
+ *
+ * `requestIdleCallback` con un `timeout`: se il telefono e' occupato aspetta,
+ * ma non oltre due decimi di secondo — su una mappa in movimento continuo,
+ * senza quel tetto, i momenti liberi non arriverebbero mai e le bandiere non
+ * comparirebbero affatto.
+ */
+function respiro() {
+  return new Promise((risolvi) => {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => risolvi(), { timeout: 200 });
+    } else {
+      setTimeout(risolvi, 0);
+    }
+  });
+}
+
+async function serviCoda() {
+  if (codaInCorso) return;
+  codaInCorso = true;
+  try {
+    while (codaBandiere.size) {
+      const [key, voce] = codaBandiere.entries().next().value;
+      codaBandiere.delete(key);
+
+      // Fra l'accodamento e adesso puo' essere cambiato tutto: l'entita'
+      // smarcata, la bandiera gia' rimessa da un'altra strada, il tetto
+      // raggiunto. Si ricontrolla qui, dove si sta per spendere.
+      if (statusOf(voce.kind, voce.code) !== 'visited') continue;
+      if (bandiereMinute.has(key)) continue;
+      if (activeFlags.has(key)) {
+        if (!voce.rifai) continue;
+        // Il livello vecchio se ne va solo adesso, un istante prima che il nuovo
+        // lo sostituisca: toglierlo al momento dell'accodamento farebbe
+        // lampeggiare il colore pieno per tutta l'attesa in coda.
+        removeFlagLayer(voce.kind, voce.code);
+      }
+
+      await aggiungiBandiera(voce.kind, voce.code);
+      // il tetto va fatto rispettare qui e non solo a fine spazzata: la coda
+      // aggiunge livelli molto dopo che `aggiornaBandiereInVista` ha contato
+      sfoltisciBandiere();
+      await respiro();
+    }
+  } catch (e) {
+    console.error('[bandiere] coda interrotta', e);
+  } finally {
+    codaInCorso = false;
+  }
+}
+
+/**
  * Rimette le bandiere delle entita' visitate che sono rientrate in vista.
  *
  * E' la controparte di `sfoltisciBandiere`: insieme rendono le bandiere una
@@ -825,8 +1096,7 @@ function aggiornaBandiereInVista() {
     const kind = key.slice(0, i);
     const code = key.slice(i + 1);
     if (latoBandiera(v.bboxRif, kind) <= v.lato) continue;
-    removeFlagLayer(kind, code);
-    aggiungiBandiera(kind, code);
+    accodaBandiera(kind, code, true);
   }
 
   const livelli = ['countries-fill'];
@@ -836,7 +1106,7 @@ function aggiornaBandiereInVista() {
     const code = f.properties.code;
     const key = `${kind}:${code}`;
     if (!code || activeFlags.has(key) || bandiereMinute.has(key)) continue;
-    if (statusOf(kind, code) === 'visited') aggiungiBandiera(kind, code);
+    if (statusOf(kind, code) === 'visited') accodaBandiera(kind, code);
   }
   sfoltisciBandiere();
 }
@@ -867,8 +1137,12 @@ function setStatus(kind, code, status, opzioni = {}) {
   // una marcatura esplicita vince sempre sulla rinuncia per dimensione: chi
   // segna un paese adesso si aspetta di vederne la bandiera, non il colore
   bandiereMinute.delete(`${kind}:${code}`);
-  if (status === 'visited') aggiungiBandiera(kind, code);
-  else removeFlagLayer(kind, code);
+  if (status !== 'visited') removeFlagLayer(kind, code);
+  // `differisci` distingue il tocco singolo dalla marcatura in blocco: la
+  // bandiera di cio' che si e' appena toccato compare subito, le ottantatre
+  // regioni della Russia passano invece dalla coda, una per volta.
+  else if (opzioni.differisci) accodaBandiera(kind, code);
+  else aggiungiBandiera(kind, code);
 
   // cambiando una regione, lo stato del paese va ricalcolato
   if (kind === 'regions' && opzioni.propaga !== false) {
@@ -899,7 +1173,10 @@ async function aggiungiBandiera(kind, code) {
   if (!f) return;
   // lo stato puo' essere cambiato mentre si caricava la sagoma
   if (statusOf(kind, code) !== 'visited') return;
-  addFlagLayer(kind, f);
+  // `await` e non una chiamata lasciata correre: senza, la coda credeva di aver
+  // finito prima ancora che la maschera cominciasse, e le serviva tutte insieme
+  // — cioe' esattamente cio' che la coda esiste per evitare
+  await addFlagLayer(kind, f);
 }
 
 /**
@@ -1001,22 +1278,32 @@ function aggiornaPaeseDaRegioni(code) {
  * della verita', e il colore del paese ne discende.
  */
 async function impostaPaese(code, status) {
-  if (regioniAttive.has(code)) {
-    // Serve l'elenco completo delle regioni del paese, che dai tile non si
-    // ricava: portano solo cio' che e' inquadrato. Si carica il GeoJSON delle
-    // sagome — ottanta KB per l'Italia — che comunque servirebbe fra un attimo
-    // per le bandiere.
-    const regioni = regioniDi(code).length ? regioniDi(code) : await caricaRegioni(code);
-    for (const f of regioni) {
-      setStatus('regions', f.properties.code, status, { propaga: false, aggiornaConteggi: false });
+  // Un solo salvataggio per tutto il paese invece di uno per regione, e le
+  // bandiere dalla coda invece che tutte adesso: e' l'operazione piu' pesante
+  // che l'app sappia fare, ed era pesante per il modo in cui era scritta piu'
+  // che per quello che chiede. Vedi `inBlocco`.
+  return inBlocco(async () => {
+    if (regioniAttive.has(code)) {
+      // Serve l'elenco completo delle regioni del paese, che dai tile non si
+      // ricava: portano solo cio' che e' inquadrato. Si carica il GeoJSON delle
+      // sagome — ottanta KB per l'Italia — che comunque servirebbe fra un attimo
+      // per le bandiere.
+      const regioni = regioniDi(code).length ? regioniDi(code) : await caricaRegioni(code);
+      for (const f of regioni) {
+        setStatus('regions', f.properties.code, status, {
+          propaga: false,
+          aggiornaConteggi: false,
+          differisci: true,
+        });
+      }
+    } else {
+      // REGOLA 5: cambiare la nazione a regioni spente invalida il dettaglio
+      // regionale salvato, che altrimenti tornerebbe a galla alla prossima
+      // accensione contraddicendo la scelta appena fatta.
+      dimenticaRegioniDi(code);
     }
-  } else {
-    // REGOLA 5: cambiare la nazione a regioni spente invalida il dettaglio
-    // regionale salvato, che altrimenti tornerebbe a galla alla prossima
-    // accensione contraddicendo la scelta appena fatta.
-    dimenticaRegioniDi(code);
-  }
-  setStatus('countries', code, status);
+    setStatus('countries', code, status);
+  });
 }
 
 /**
@@ -1112,7 +1399,7 @@ async function attivaRegioni(code) {
   // regione visitata riappare verde piena invece che con la sua bandiera.
   const prefisso = `${code}.`;
   for (const [rc, stato] of Object.entries(store.regions)) {
-    if (stato === 'visited' && rc.startsWith(prefisso)) aggiungiBandiera('regions', rc);
+    if (stato === 'visited' && rc.startsWith(prefisso)) accodaBandiera('regions', rc);
   }
   // con le regioni accese comanda la Regola 2, anche se il paese portava un
   // valore diverso impostato quando erano spente
@@ -1202,7 +1489,10 @@ async function applyStoredStates() {
   for (const kind of ['countries', 'regions']) {
     for (const [code, status] of Object.entries(store[kind])) {
       map.setFeatureState(riferimento(kind, code), { s: status });
-      if (status === 'visited') aggiungiBandiera(kind, code);
+      // dalla coda: all'avvio si riapplica **tutto** il salvataggio in un colpo,
+      // e chi ha marcato mezzo mondo pagava mezzo mondo di rasterizzazioni
+      // prima di poter toccare la mappa
+      if (status === 'visited') accodaBandiera(kind, code);
     }
   }
 
@@ -1298,35 +1588,41 @@ function aggiornaFiltroRegioni() {
   }
 }
 
-const SFUMA_VIA = ['interpolate', ['linear'], ['zoom'], Z.regionStart, 1, Z.regionFull, 0];
-const SFUMA_DENTRO = ['interpolate', ['linear'], ['zoom'], Z.regionStart, 0, Z.regionFull, 1];
+/**
+ * Acceso sopra la soglia, spento sotto — e il suo contrario.
+ *
+ * `step` e non `interpolate`: e' esattamente la differenza fra un passaggio
+ * netto e una dissolvenza. Erano `SFUMA_DENTRO` e `SFUMA_VIA`, e producevano
+ * l'intervallo 3,5-5 in cui la bandiera della nazione sbiadiva mentre le regioni
+ * si facevano strada sotto.
+ */
+const SOPRA_SOGLIA = ['step', ['zoom'], 0, Z.regione, 1];
+const SOTTO_SOGLIA = ['step', ['zoom'], 1, Z.regione, 0];
 
 /**
  * Opacita' del livello immagine di una bandiera.
- * Uno stato con le regioni attive svanisce avvicinandosi, per lasciare il posto
+ * Uno stato con le regioni attive sparisce alla soglia, per lasciare il posto
  * alle sue regioni; tutti gli altri restano visibili a qualunque zoom.
  */
 function layerOpacity(kind, code) {
-  if (kind === 'regions') return SFUMA_DENTRO;
-  return regioniAttive.has(code) ? SFUMA_VIA : 1;
+  if (kind === 'regions') return SOPRA_SOGLIA;
+  return regioniAttive.has(code) ? SOTTO_SOGLIA : 1;
 }
 
 /**
  * Opacita' del riempimento degli stati: solo i paesi marcati con feature-state
- * `r` (dettaglio regionale attivo) svaniscono avvicinandosi.
+ * `r` (dettaglio regionale attivo) spariscono oltre la soglia.
  *
  * L'espressione `zoom` deve stare al livello piu' esterno — MapLibre rifiuta
- * `['case', ..., ['interpolate', ['zoom'], ...]]` — quindi si inverte la
- * struttura: interpolazione sullo zoom, e il valore di arrivo e' quello che
- * dipende dai dati. A zoom basso tutti opachi, a zoom alto trasparenti solo i
- * paesi accesi.
+ * `['case', ..., ['step', ['zoom'], ...]]` — quindi si inverte la struttura:
+ * lo scatto sullo zoom fuori, e il valore che ne esce e' quello che dipende dai
+ * dati. Sotto la soglia tutti opachi, sopra trasparenti solo i paesi accesi.
  */
 const OPACITA_STATI = [
-  'interpolate',
-  ['linear'],
+  'step',
   ['zoom'],
-  Z.regionStart, 1,
-  Z.regionFull, ['case', ['==', ['feature-state', 'r'], true], 0, 1],
+  1,
+  Z.regione, ['case', ['==', ['feature-state', 'r'], true], 0, 1],
 ];
 
 function cityColor() {
@@ -1340,8 +1636,8 @@ function cityColor() {
 
 function refreshOpacity() {
   map.setPaintProperty('countries-fill', 'fill-opacity', OPACITA_STATI);
-  map.setPaintProperty('regions-fill', 'fill-opacity', SFUMA_DENTRO);
-  map.setPaintProperty('regions-line', 'line-opacity', SFUMA_DENTRO);
+  map.setPaintProperty('regions-fill', 'fill-opacity', SOPRA_SOGLIA);
+  map.setPaintProperty('regions-line', 'line-opacity', SOPRA_SOGLIA);
 
   for (const [key, voce] of activeFlags) {
     const [kind, code] = key.split(':');
@@ -1398,7 +1694,7 @@ function refreshStats() {
 
 function refreshModeLabel() {
   const z = map.getZoom();
-  const mode = z < Z.regionStart ? 'stati' : z < Z.cityFull ? 'stati e regioni' : 'con città';
+  const mode = z < Z.regione ? 'stati' : z < Z.cityFull ? 'stati e regioni' : 'con città';
   document.getElementById('mode').textContent = `zoom ${z.toFixed(2)} · ${mode}`;
 }
 
@@ -1471,11 +1767,18 @@ async function main() {
     zoom: 1.6,
     minZoom: 0.5,
     maxZoom: 12,
-    // Senza, il canvas WebGL viene svuotato dopo ogni disegno e `toDataURL`
-    // restituisce un'immagine nera: e' il presupposto dell'export in PNG (§10),
-    // e va deciso qui perche' non si puo' cambiare a mappa gia' costruita.
-    // Costa un po' di memoria video in piu' su ogni fotogramma.
-    preserveDrawingBuffer: true,
+    // Quanti pixel disegnare davvero: vedi PROFILO. Sul profilo pieno e'
+    // `undefined`, e MapLibre usa il devicePixelRatio nativo come sempre.
+    pixelRatio: PROFILO.pixelRatio,
+    // `false`, ed era `true`.
+    //
+    // Conservare il buffer di disegno costa su **ogni** fotogramma — impedisce
+    // al browser di consegnare il canvas direttamente al compositore — e serviva
+    // a una cosa sola: l'export in PNG del menu (§10). Non serve piu', perche'
+    // `immagineDaApp` ora legge il canvas dentro l'evento `render`, cioe' nello
+    // stesso giro di eventi in cui il disegno e' appena avvenuto e il buffer e'
+    // ancora pieno. Il costo fisso se ne va, la funzione resta.
+    preserveDrawingBuffer: false,
     attributionControl: { compact: true, customAttribution: 'Natural Earth · flag-icons' },
     style: {
       version: 8,
@@ -1667,15 +1970,16 @@ async function main() {
    * Livelli che rispondono al tocco, **ordinati dal piu' specifico al piu'
    * generico**: l'ordine e' significativo, lo usa `colpito()` per decidere.
    *
-   * La soglia delle regioni e' `regionStart` e non `regionFull`: si disegnano
-   * sfumando da 3,5 a 5, e nel mezzo si vedevano senza poterle toccare — il
-   * tocco cadeva sulla nazione sotto, che con le regioni accese si porta dietro
-   * tutte le sue regioni. Cio' che si vede dev'essere cio' che si tocca.
+   * La soglia delle regioni e' la stessa con cui vengono disegnate, e non puo'
+   * piu' essere altrimenti: ce n'e' una sola. Quando erano due — si disegnavano
+   * sfumando da 3,5 a 5 — nel mezzo si vedevano senza poterle toccare, e il
+   * tocco cadeva sulla nazione sotto portandosi dietro tutte le sue regioni.
+   * Cio' che si vede dev'essere cio' che si tocca, e ora lo e' per costruzione.
    */
   function livelliInterrogabili(z) {
     const layers = [];
     if (opts.cities && z >= Z.cityStart) layers.push('places-circle');
-    if (z >= Z.regionStart) layers.push('regions-fill');
+    if (z >= Z.regione) layers.push('regions-fill');
     layers.push('countries-fill');
     return layers;
   }
@@ -1786,8 +2090,8 @@ async function main() {
     const n = await attivaRegioni(code);
     if (n) {
       toast(`${nome}: ${n} regioni attive`, COLOR.visited);
-      if (map.getZoom() < Z.regionFull) {
-        map.easeTo({ center: e.lngLat, zoom: Z.regionFull + 0.3, duration: 900 });
+      if (map.getZoom() < Z.regione) {
+        map.easeTo({ center: e.lngLat, zoom: Z.regione + 0.3, duration: 900 });
       }
     }
   });
@@ -1906,13 +2210,17 @@ async function main() {
           out.maschere.push('null');
           continue;
         }
+        // `r.url` ora e' un getter che codifica il PNG a ogni accesso: si legge
+        // una volta sola, altrimenti la diagnostica comprime due volte lo stesso
+        // canvas per stamparne la dimensione
+        const png = r.url;
         const decodificabile = await new Promise((resolve) => {
           const probe = new Image();
           probe.onload = () => resolve(`${probe.naturalWidth}x${probe.naturalHeight}`);
           probe.onerror = () => resolve('NON DECODIFICABILE');
-          probe.src = r.url;
+          probe.src = png;
         });
-        out.maschere.push(`canvas ${r.size}, PNG ${Math.round(r.url.length / 1024)} KB, decodifica ${decodificabile}`);
+        out.maschere.push(`canvas ${r.size}, PNG ${Math.round(png.length / 1024)} KB, decodifica ${decodificabile}`);
       } catch (e) {
         out.maschere.push(`eccezione: ${e.message}`);
       }

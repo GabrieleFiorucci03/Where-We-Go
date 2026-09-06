@@ -40,6 +40,15 @@ data class Selezione(
      */
     val lat: Double = 0.0,
     val lon: Double = 0.0,
+    /**
+     * Codice a due lettere della bandiera, minuscolo: "it", "fr".
+     *
+     * **Solo per le nazioni**, e nemmeno per tutte: tre fra quelle nei dati non
+     * hanno una bandiera riconosciuta e mandano stringa vuota. Serve a trovare
+     * il file negli asset — `flags/it.svg` — e non a identificare la nazione,
+     * che resta [codice] in ISO3.
+     */
+    val iso2: String = "",
 ) {
     /** Una citta' con coordinate vere: l'unico caso in cui la galleria ha senso. */
     val haPosizione: Boolean get() = tipo == "places" && (lat != 0.0 || lon != 0.0)
@@ -103,12 +112,13 @@ class PonteUi(
         ricerca: String,
         lat: Double,
         lon: Double,
+        iso2: String,
     ) {
         principale.post {
             onSelezione(
                 Selezione(
                     tipo, codice, nome, gerarchia, stato, numeroRegioni, regioniAccese, ricerca,
-                    lat, lon
+                    lat, lon, iso2
                 )
             )
         }
