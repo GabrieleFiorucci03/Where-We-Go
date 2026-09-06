@@ -6,6 +6,12 @@ bandiera dello stato o lo stemma della regione.
 
 Ispirazione: *Countries Been*, con l'aggiunta del riempimento a bandiera.
 
+> **Aggiornamento 2026-09-06:** le regioni sono migrate da GADM a
+> geoBoundaries gbOpen, con livello scelto paese per paese e ripieghi Natural
+> Earth. I dettagli operativi e le decisioni sono in `docs/MIGRAZIONE.md`.
+> Le sezioni che misurano GADM restano come cronologia della scelta originaria,
+> non come descrizione della pipeline corrente.
+
 ---
 
 ## 0. Decisioni prese
@@ -18,7 +24,7 @@ Ispirazione: *Countries Been*, con l'aggiunta del riempimento a bandiera.
 | Granularità città | Massima possibile a costo zero → GeoNames, feature class `P` (~4,8 M centri abitati) |
 | Regioni | **Opzionali, mai attive di default**: si accendono per paese, vedi §6.2 |
 | Tema | **Chiaro di default**, scuro selezionabile nelle impostazioni. Vedi §6.1 |
-| Suddivisioni | **Ci si ferma alle regioni** (GADM livello 1). Niente province né comuni: vedi §13 |
+| Suddivisioni | **Ci si ferma alle regioni**; livello geoBoundaries scelto paese per paese. Niente province né comuni: vedi §13 e `docs/MIGRAZIONE.md` |
 | Approfondimento | Città → galleria di foto da Wikimedia Commons dentro l'app; nazioni e regioni → Chrome Custom Tab. Vedi §9.6 |
 | Distribuzione | **Nessuna.** App a uso personale: APK compilato in locale e installato a mano sul proprio telefono. Vedi §4 |
 | Costi | **Zero assoluto**, nessun account sviluppatore, nessuna fee |
@@ -63,11 +69,13 @@ sfera. La controparte nativa è più indietro. La WebView è un dettaglio implem
 
 ## 2. Sorgenti dati e licenze
 
-Tutto gratuito. Poiché l'app è **a uso personale e non viene distribuita**, si può usare anche
-**GADM**, il dataset di suddivisioni amministrative più completo al mondo: la sua licenza vieta
-redistribuzione e uso commerciale ma consente esplicitamente l'uso personale. GADM 4.1 copre
-**400.276 aree amministrative** su fino a 6 livelli (0-5), quindi i comuni come *poligoni* e non
-solo come punti, in gran parte del mondo.
+Tutto gratuito. La pipeline corrente usa **geoBoundaries gbOpen** per 198
+paesi/territori e Natural Earth per 14 ripieghi. Le licenze nazionali aggregate
+sono miste: 96 fonti sono ODbL o CC BY-SA. Vedi `CREDITI.md` e
+`docs/LICENZE_REGIONI.md` per l'attribuzione completa.
+
+Il testo seguente documenta la scelta originaria di GADM, ora superata dalla
+migrazione ma utile per capire quali problemi la nuova tabella per paese risolveva.
 
 > Se un domani si volesse distribuire l'app, GADM va sostituito. Per questo la pipeline (§3) va
 > tenuta agnostica sulla sorgente: un solo script di import da cambiare, non lo schema dei tile.
@@ -364,8 +372,8 @@ senza intervento.
 **Identificatori stabili** (fondamentali: sono la chiave del database utente):
 
 - Stato → ISO 3166-1 alpha-3 (`ITA`)
-- Regione / sub-regione → `GID` di GADM (`ITA.16_1`, `ITA.16.9_1`), con ISO 3166-2 (`IT-52`) come
-  campo secondario dove disponibile
+- Regione → codice sintetico `paese.slug` (`ITA.toscana`), indipendente dagli
+  identificativi opachi della fonte
 - Città → `geonameid` (intero GeoNames)
 
 **Difetti noti di GADM 4.1 sui nomi** (misurati durante lo spike): in **906 record su 3.583** del
@@ -1359,7 +1367,7 @@ sono due errori che si rifanno facilmente:
 |---|---|---|
 | **M0-A — Prototipo web** ✅ | Globo MapLibre, stile B/N, regioni GADM, ritaglio bandiere | **Fatto.** Globo confermato, adattamento "deforma" scelto, maschera in Mercatore confermata |
 | **M0-B — Spike Android** ✅ | WebView + MapLibre + PMTiles letti via ponte Kotlin | **Confermato su dispositivo reale** il 2026-08-12, con il prototipo completo — non più la pagina dello spike — e **due archivi insieme**, città e confini. È lì che è emerso il difetto dell'`addProtocol` unico (§5), invisibile sul desktop |
-| **M1 — Pipeline dati** ✅ | Script Natural Earth + GeoNames → PMTiles, misura dei pesi reali | **Fatto.** Città: 450.848 voci in 40,7 MB, pipeline in 3'27". Confini: 242 stati + 3.583 regioni in **45,6 MB** (`boundaries.pmtiles`, zoom 0-9), pipeline in 42 s. Il rischio 3b è chiuso: i tile si caricano per riquadro, non tutti insieme |
+| **M1 — Pipeline dati** ✅ | Script Natural Earth + GeoNames + geoBoundaries → PMTiles | **Fatto.** Città: 450.848 voci in 40,7 MB. Confini migrati: 249 stati/territori + 3.343 regioni in **40,7 MB** (`boundaries.pmtiles`, zoom 0-9); sagome regionali per l'APK 9,8 MB. Il rischio 3b è chiuso: i tile si caricano per riquadro, non tutti insieme |
 | **M2 — Scheda di selezione** ◐ | Mappa a tutto schermo, menu dietro un pulsante, **scheda di selezione in alto** (§9.2), pulsante per le regioni | **Interfaccia fatta e provata su dispositivo.** Manca Room: lo stato è ancora nel `localStorage` della pagina, con una copia mandata a Kotlin per gli elenchi — due posti che devono restare d'accordo. Con Room si sposteranno anche le sei regole di §8.1 |
 | **M2-bis — Indice, elenchi e ricerca** ✅ | Indice SQLite in pipeline (§9.5), elenco nazioni → città (§9.3), ricerca (§9.4) | **Fatto e provato.** 440.273 città e 242 nazioni in 56,8 MB; ricerca in italiano, elenchi per popolazione, marcatura diretta dalle righe |
 | **M3 — Bandiere** ✅ | Maschera runtime, cache, fallback colore | **Fatto**, meno gli stemmi. Le bandiere seguono lo schermo: tetto di 120 livelli, si scaricano quelle fuori vista e si rifanno quando rientrano (§11 rischio 4). **Si vedono a ogni zoom**: il canvas è dimensionato su quanto l'entità occupa a schermo, che nel caso peggiore vale 21 MB invece di 777 (§7.2). **Gli stemmi delle regioni (§7.3) sono esclusi per decisione**: sono lavoro di curation, non di codice |
@@ -1435,7 +1443,8 @@ Tre cose da tenere presenti quando si comincia:
   PD / CC-BY / CC-BY-SA estratte da Wikidata; per le regioni scoperte, bandiera nazionale
   desaturata con bordo verde.
 - **Distribuzione**: nessuna. APK compilato in locale e installato a mano (§4).
-- **Dati suddivisioni**: GADM 4.1, sfruttando la licenza per uso personale (§2).
+- **Dati suddivisioni**: geoBoundaries gbOpen con livello per paese e ripieghi
+  Natural Earth; attribuzioni in `docs/LICENZE_REGIONI.md`.
 - **Protezione dal nascondimento**: risolta, vedi §2.3. Non una soglia unica di popolazione, ma
   correzione del confronto fra nomi più soglia ristretta a sei paesi.
 - **Icona**: il globo di `assets-sorgente/icona-globo.png`, in icona adattiva su sfondo bianco,
@@ -1447,8 +1456,9 @@ Tre cose da tenere presenti quando si comincia:
   app affiancata alla prima invece di aggiornarla, e il database della vecchia va esportato prima.)
 - **Regioni**: opzionali, mai attive di default, accese per paese più un interruttore globale (§6.2).
 - **Tema**: chiaro di default, scuro selezionabile, non legato al tema di sistema (§6.1).
-- **Livelli GADM**: **ci si ferma al livello 1**, le regioni. Niente province (liv. 2) né comuni
-  (liv. 3): valutate e scartate per non allargare troppo il progetto. I comuni restano i punti
+- **Livelli amministrativi**: **ci si ferma alle regioni**, scegliendo ADM1/2/3
+  per paese quando la nomenclatura nazionale lo richiede. Niente province o comuni
+  come nuovo livello dell'interfaccia: i comuni restano i punti
   città di GeoNames. Se un giorno si volessero le province come semplice riferimento grafico,
   la misura da rifare è quella di §6.2: il peso non dipende dall'essere selezionabili o no —
   togliere l'interattività vale solo il −30% dei confini condivisi, mentre il risparmio grosso

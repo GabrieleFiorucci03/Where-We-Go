@@ -375,8 +375,13 @@ class MainActivity : ComponentActivity() {
             val esito = runCatching { org.json.JSONObject(testo ?: "") }.getOrNull()
             poi(
                 if (esito?.optBoolean("ok") == true) {
-                    "Ripristinati ${esito.optInt("nazioni")} nazioni, " +
+                    val base = "Ripristinati ${esito.optInt("nazioni")} nazioni, " +
                         "${esito.optInt("regioni")} regioni, ${esito.optInt("citta")} città"
+                    val rimappate = esito.optInt("regioniRimappate")
+                    val scartate = esito.optInt("regioniScartate")
+                    if (rimappate > 0 || scartate > 0) {
+                        "$base ($rimappate regioni convertite, $scartate senza equivalenza)"
+                    } else base
                 } else {
                     "Ripristino non riuscito: ${esito?.optString("errore") ?: "file non valido"}"
                 }

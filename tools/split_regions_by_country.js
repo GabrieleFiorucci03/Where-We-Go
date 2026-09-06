@@ -24,15 +24,12 @@ const OUT = path.join(ROOT, 'web', 'data', 'regions');
 
 // Il file monolitico vive fuori da web/: l'app non lo usa piu' e dentro web/
 // finirebbe negli asset dell'APK, duplicando 12,6 MB inutili.
-const CANDIDATI = [
-  path.join(ROOT, 'data_raw', 'regions_simplified.geojson'),
-  path.join(ROOT, 'web', 'data', 'regions.geojson'),
-];
+const CANDIDATI = [path.join(ROOT, 'data_raw', 'confini', 'regions_sagome.geojson')];
 const SRC = CANDIDATI.find((p) => fs.existsSync(p));
 
 if (!SRC) {
   console.error(`Nessun file sorgente trovato. Cercati:\n  ${CANDIDATI.join('\n  ')}`);
-  console.error('Esegui prima build_regions_gadm.js e mapshaper.');
+  console.error('Esegui prima node tools/prepara_regioni.js.');
   process.exit(1);
 }
 console.log(`sorgente: ${path.relative(ROOT, SRC)}`);

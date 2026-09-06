@@ -31,6 +31,7 @@ import {
   cartellaTile,
   elencoFile,
 } from './android-source.js';
+import { migraCodiciRegioni } from './region-aliases.js';
 
 /** Nome dell'archivio dei tile delle citta', identico su disco e sul server. */
 const TILE_CITTA = 'cities.pmtiles';
@@ -260,7 +261,7 @@ function segnalaSelezione(hit) {
  * dovra' continuare a leggere e scrivere questo, altrimenti i file salvati
  * prima diventerebbero illeggibili.
  */
-window.statoDaApp = () => JSON.stringify({ versione: 1, salvato: Date.now(), stato: store });
+window.statoDaApp = () => JSON.stringify({ versione: 2, salvato: Date.now(), stato: store });
 
 /**
  * Ripristina un backup. Restituisce un resoconto, non un booleano: chi ha
@@ -273,9 +274,10 @@ window.ripristinaDaApp = (json) => {
     const s = letto.stato || letto; // accetta anche un salvataggio grezzo
     if (!s || typeof s !== 'object') throw new Error('formato non riconosciuto');
 
+    const migrazione = migraCodiciRegioni(s.regions || {});
     store = {
       countries: s.countries || {},
-      regions: s.regions || {},
+      regions: migrazione.regioni,
       places: s.places || {},
       regioniAttive: s.regioniAttive || [],
     };
@@ -297,6 +299,9 @@ window.ripristinaDaApp = (json) => {
       nazioni: Object.keys(store.countries).length,
       regioni: Object.keys(store.regions).length,
       citta: Object.keys(store.places).length,
+      regioniRimappate: migrazione.rimappate,
+      regioniScartate: migrazione.scartate,
+      regioniSconosciute: migrazione.sconosciute,
     });
   } catch (e) {
     console.error('ripristino fallito', e);
@@ -567,15 +572,30 @@ function loadStore() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      const migrazione = migraCodiciRegioni(parsed.regions || {});
+      const caricato = {
         countries: parsed.countries || {},
-        regions: parsed.regions || {},
+        regions: migrazione.regioni,
         // le citta' sono indipendenti da nazione e regione: nessuna
         // ereditarieta', nessuna aggregazione
         places: parsed.places || {},
         // paesi per i quali l'utente ha chiesto il dettaglio regionale
         regioniAttive: parsed.regioniAttive || [],
       };
+      if (migrazione.rimappate || migrazione.scartate) {
+        // La conversione avviene anche sullo stato vivo, non soltanto quando
+        // si importa un backup vecchio. Si salva subito: al prossimo avvio non
+        // deve dipendere ancora dalla tabella di compatibilita'.
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(caricato));
+        console.log(
+          `[migrazione regioni] ${migrazione.rimappate} rimappate, ` +
+          `${migrazione.scartate} senza equivalenza`
+        );
+      }
+      if (migrazione.sconosciute) {
+        console.warn(`[migrazione regioni] ${migrazione.sconosciute} vecchi codici senza regola, conservati`);
+      }
+      return caricato;
     }
   } catch (e) {
     console.warn('store illeggibile, riparto da zero', e);
@@ -1119,7 +1139,7 @@ function statusOf(kind, code) {
   return store[kind][code] || 'none';
 }
 
-/** ISO3 del paese a cui appartiene una regione: i GID sono "ITA.16_1". */
+/** Codice del paese che precede lo slug regionale: per esempio "ITA.toscana". */
 function paeseDiRegione(code) {
   return code.split('.')[0];
 }
@@ -1243,8 +1263,8 @@ function regioniDi(code) {
 function statoDaRegioni(code) {
   // Si scandisce il **salvataggio**, non le feature caricate: con i tile le
   // regioni arrivano una tessera alla volta, e ciclare su quelle in memoria
-  // darebbe risposte diverse a seconda di dove si sta guardando. I GID di GADM
-  // iniziano con l'ISO3 seguito da un punto, quindi il prefisso basta — e' lo
+  // darebbe risposte diverse a seconda di dove si sta guardando. I codici
+  // iniziano col paese seguito da un punto, quindi il prefisso basta — e' lo
   // stesso trucco che usa `dimenticaRegioniDi`.
   const prefisso = `${code}.`;
   let wanted = false;
@@ -1308,8 +1328,8 @@ async function impostaPaese(code, status) {
 
 /**
  * Cancella gli stati regionali salvati di un paese.
- * I codici GADM di livello 1 iniziano con l'ISO3 seguito da un punto
- * ("ITA.16_1"), quindi si possono togliere anche senza avere il file caricato.
+ * I codici regionali iniziano col paese seguito da un punto
+ * ("ITA.toscana"), quindi si possono togliere anche senza avere il file caricato.
  */
 function dimenticaRegioniDi(code) {
   const prefisso = `${code}.`;
@@ -1545,7 +1565,7 @@ function coloreVisitato() {
  *
  * Stati e regioni vivono nello stesso archivio, distinti dal `source-layer`, e
  * grazie a `promoteId: 'code'` l'identificativo **e'** il codice: `ITA` per lo
- * stato, `ITA.16_1` per la regione. Non serve piu' avere la feature sotto mano,
+ * stato, `ITA.toscana` per la regione. Non serve piu' avere la feature sotto mano,
  * cosa che con i tile sarebbe impossibile — arrivano una tessera alla volta e
  * di una regione fuori schermo non si ha nulla.
  */
@@ -1801,7 +1821,7 @@ async function main() {
         // Stati e regioni stanno nello stesso archivio, in due livelli.
         //
         // `promoteId: 'code'` e' il perno di tutto: promuove la proprieta'
-        // `code` — ISO3 per gli stati, GID di GADM per le regioni — a
+        // `code` — codice paese per gli stati, `paese.slug` per le regioni — a
         // identificativo della feature. Senza, `setFeatureState` non avrebbe
         // nulla su cui attaccarsi, perche' i tile non portano un id numerico
         // e `--use-attribute-for-id` di tippecanoe vuole un numero mentre i

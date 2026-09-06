@@ -33,14 +33,16 @@ $zoomMax = if ($env:ZOOM_MAX_CONFINI) { $env:ZOOM_MAX_CONFINI } else { '9' }
 $semplificazione = if ($env:SEMPLIFICAZIONE) { $env:SEMPLIFICAZIONE } else { '4' }
 
 Passo 1 'Preparazione degli ingressi'
-# il grezzo GADM e' un file da 73 MB: serve piu' spazio del predefinito
+# La normalizzazione legge circa 130 MB di geometrie geoBoundaries e crea
+# anche le sagome leggere per l'APK: il margine evita dipendenze dalla heap
+# predefinita della versione di Node installata.
 & node --max-old-space-size=4096 (Join-Path $PSScriptRoot 'prepara_confini.js')
 if ($LASTEXITCODE -ne 0) { throw 'prepara_confini.js e uscito con errore' }
 
 Passo 2 'Generazione dei tile'
 # Due livelli in un archivio solo: -L <nome>:<file>. Niente
 # --use-attribute-for-id, che vuole un identificativo numerico: qui sono
-# stringhe ("ZWE", "ITA.16_1") e vanno dichiarate con `promoteId` nello stile.
+# stringhe ("ZWE", "ITA.toscana") e vanno dichiarate con `promoteId` nello stile.
 #
 # --drop-densest-as-needed NON va usato sui confini: scarterebbe interi stati
 # nelle zone fitte, ed e' esattamente cio' che non deve succedere a un

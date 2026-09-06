@@ -51,7 +51,7 @@ private enum class Tipo(val chiave: String, val etichetta: String) {
  * basta. Qui le stesse righe diventano una porta.
  *
  * **Da dove vengono i nomi.** Il salvataggio conserva soltanto le chiavi:
- * `ITA`, `ITA.16_1`, `g:3173435`. I nomi stanno in tre posti diversi e si
+ * `ITA`, `ITA.toscana`, `g:3173435`. I nomi stanno in tre posti diversi e si
  * uniscono qui — le nazioni e le citta' nell'indice SQLite, le regioni nei
  * GeoJSON degli asset (vedi [IndiceRegioni]). Una voce di cui non si trova il
  * nome non sparisce: si mostra la chiave, perche' una cosa marcata che non

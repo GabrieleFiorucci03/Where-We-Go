@@ -1,11 +1,10 @@
 # --------------------------------------------------------------------------
 # I DATI NON STANNO QUI, ED È UNA SCELTA OBBLIGATA
 #
-# Le suddivisioni amministrative vengono da GADM, la cui licenza consente
-# l'uso personale ma **vieta la ridistribuzione**. Pubblicare i tile o i
-# GeoJSON delle regioni sarebbe ridistribuirli, quindi il repository porta la
-# ricetta e non gli ingredienti: si rigenerano con gli script in tools/,
-# scaricando le fonti in proprio. Vedi README.md e CREDITI.md.
+# I grezzi geografici sono grandi e rigenerabili. Le regioni vengono ora da
+# geoBoundaries/Natural Earth e sono ridistribuibili con attribuzione e, per
+# molte fonti, share-alike; il repository conserva ricetta, scelte e crediti,
+# mentre l'APK riceve i prodotti generati. Vedi README.md e CREDITI.md.
 #
 # Vale anche per il pratico: allCountries.txt di GeoNames pesa 1,7 GB, contro
 # un limite di 100 MB per file su GitHub.

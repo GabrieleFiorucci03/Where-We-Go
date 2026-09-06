@@ -11,7 +11,7 @@ import org.json.JSONObject
  *
  * **Perche' non stanno in `citta.db`.** L'indice SQLite ha due tabelle, nazioni
  * e citta', e le regioni non ci sono mai entrate: la pipeline che lo costruisce
- * parte da GeoNames, dove le suddivisioni GADM non compaiono. Aggiungercele
+ * parte da GeoNames, dove le suddivisioni amministrative non compaiono. Aggiungercele
  * vorrebbe dire rigenerare un file da 57 MB per una manciata di nomi che
  * nell'APK ci sono gia', in chiaro, un file per nazione.
  *
@@ -53,7 +53,8 @@ class IndiceRegioni(context: Context) {
             out.sortedBy { it.nome }
         } catch (e: Exception) {
             // Un paese senza suddivisioni non ha il file, e non e' un guasto:
-            // `indiceRegioni` lato mappa dice quali ne hanno, e sono 224 su 242.
+            // `indiceRegioni` lato mappa dice quali ne hanno; l'assenza resta
+            // quindi un caso previsto, non un errore di lettura.
             Log.i(TAG, "nessuna suddivisione per $iso3")
             emptyList()
         }
@@ -100,7 +101,7 @@ class IndiceRegioni(context: Context) {
     companion object {
         const val TAG = "IndiceRegioni"
 
-        /** L'ISO3 del paese a cui appartiene una regione: i GID sono "ITA.16_1". */
+        /** Il codice paese che precede lo slug: per esempio "ITA.toscana". */
         fun paeseDi(codiceRegione: String): String = codiceRegione.substringBefore('.')
     }
 }
@@ -110,7 +111,7 @@ class IndiceRegioni(context: Context) {
  *
  * Senza, cercando "citta" non si trova "Città di Castello" e cercando "emilia"
  * si trova "Emilia-Romagna" solo se si indovina l'accento giusto — e i nomi
- * delle regioni GADM sono pieni di segni che sulla tastiera non si battono di
+ * delle regioni possono essere pieni di segni che sulla tastiera non si battono di
  * getto. La forma NFD separa la lettera dal segno diacritico, e i segni si
  * buttano via: e' lo stesso `senzaAccenti` che la pipeline applica ai nomi
  * delle citta' quando costruisce l'indice.

@@ -5,22 +5,25 @@ si usano e — dove serve — cosa comporta per chi vuole ridistribuirli.
 
 ## Dati
 
-### GADM 4.1 — suddivisioni amministrative (le regioni)
+### geoBoundaries gbOpen — suddivisioni amministrative (le regioni)
 
-<https://gadm.org>
+<https://www.geoboundaries.org>
 
-**Non ridistribuibili.** La licenza di GADM consente l'uso accademico e personale
-ma vieta esplicitamente la ridistribuzione e l'uso commerciale senza permesso.
+L'app sceglie per ciascun paese il livello amministrativo che corrisponde meglio
+a una «regione» di viaggio. Usa geoBoundaries per 198 paesi o territori e
+Natural Earth per 14 ripieghi; 12 paesi restano senza suddivisioni. I file
+geoBoundaries sono quelli semplificati pubblicati dal progetto, fissati ai commit
+indicati in `tools/livelli_regioni.json`.
 
-È il motivo per cui in questo repository **non ci sono dati**: `web/data/` e
-`data_raw/` sono esclusi dal versionamento. Gli script in `tools/` li ricostruiscono
-scaricando GADM dal sito ufficiale, così ogni copia dei dati nasce sotto la
-licenza accettata da chi la scarica.
+La licenza non si riduce a una sola riga: le fonti nazionali aggregate da
+geoBoundaries conservano licenze proprie. **96 su 198 sono ODbL o CC BY-SA**, e
+quindi hanno obblighi share-alike oltre all'attribuzione. L'elenco completo per
+paese, con anno, licenza e fonte dichiarata, è in
+[`docs/LICENZE_REGIONI.md`](docs/LICENZE_REGIONI.md).
 
-Se un giorno servisse distribuire l'app con i dati dentro, le regioni vanno
-sostituite con una fonte permissiva (Natural Earth admin-1, oppure OpenStreetMap
-sotto ODbL). Il piano lo prevede: gli stati vengono già da Natural Earth proprio
-per non estendere la dipendenza da GADM (vedi `docs/PIANO.md` §2).
+Le elaborazioni applicate dal progetto sono: scelta del livello, correzione di
+alcuni nomi con codifica guasta, codici sintetici `ISO3.slug`, semplificazione
+delle sagome usate nell'interfaccia e creazione dei tile vettoriali.
 
 ### GeoNames — le città
 
@@ -30,11 +33,13 @@ I 450.848 punti città e i loro nomi alternativi vengono da `allCountries.txt`.
 La licenza consente la ridistribuzione **con attribuzione**: chi pubblica i dati
 derivati (i tile `cities.pmtiles`, l'indice `citta.db`) deve citare GeoNames.
 
-### Natural Earth — i confini nazionali
+### Natural Earth — confini nazionali e ripieghi regionali
 
 <https://www.naturalearthdata.com> — **pubblico dominio**
 
-Nessun vincolo.
+Pubblico dominio. Oltre ai confini nazionali, è usato per i 14 territori elencati
+nell'appendice delle licenze regionali, nei quali geoBoundaries non offre il
+livello editoriale scelto.
 
 ### Wikimedia Commons — le fotografie della galleria
 

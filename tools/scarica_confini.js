@@ -21,11 +21,16 @@
  * dato, non quello che nel frattempo e' cambiato: e' la stessa ragione per cui
  * la tabella e' versionata e i dati no.
  *
- * Uso:  node tools/scarica_confini.js [--forza]
+ * Per impostazione predefinita scarica la geometria semplificata pubblicata da
+ * geoBoundaries: e' quella adatta allo zoom massimo 9 dell'app. `--completi`
+ * conserva una via esplicita per confronti o futuri zoom piu' profondi.
+ *
+ * Uso:  node tools/scarica_confini.js [--forza] [--completi]
  *
  *   --forza   riscarica anche i file gia' presenti e validi
  *
- * Scrive: data_raw/geoboundaries/<ISO>-<LIVELLO>.geojson
+ * Scrive: data_raw/geoboundaries_simplified/<ISO>-<LIVELLO>.geojson
+ *         data_raw/geoboundaries/<ISO>-<LIVELLO>.geojson con --completi
  */
 
 const fs = require('fs');
@@ -33,9 +38,9 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const TABELLA = path.join(__dirname, 'livelli_regioni.json');
-const USCITA = path.join(ROOT, 'data_raw', 'geoboundaries');
-
 const FORZA = process.argv.includes('--forza');
+const COMPLETI = process.argv.includes('--completi');
+const USCITA = path.join(ROOT, 'data_raw', COMPLETI ? 'geoboundaries' : 'geoboundaries_simplified');
 
 /** Quante richieste insieme. Sei e' gentile con GitHub e comunque veloce. */
 const PARALLELE = 6;
@@ -99,7 +104,11 @@ const SOGLIA_PARSE = 400 * 1024 * 1024;
 const CONTEGGI_VERI = {
   HUN: { unita: 19, perche: 'le 19 province; Budapest, che porterebbe a 20, non e\' nel file' },
   IRN: { unita: 32, perche: 'i metadati ne dichiarano 33; Natural Earth ne ha 31, che e\' il numero delle province' },
-  NAM: { unita: 13, perche: 'confini pre-2013, con Caprivi e Kavango non ancora rinominate e divise; Natural Earth e\' fermo agli stessi' },
+  NAM: {
+    unita: 13,
+    unitaSemplificate: 14,
+    perche: 'il file completo e\' pre-2013 (13); quello semplificato contiene le 14 regioni correnti dichiarate dai metadati',
+  },
   TKM: { unita: 5, perche: 'le 5 province; la citta\' di Ashgabat, che porterebbe a 6, non e\' nel file' },
   XKX: { unita: 7, perche: 'i 7 distretti; i metadati contano i 48 comuni, che sono un altro livello' },
 };
@@ -114,7 +123,7 @@ const CONTEGGI_VERI = {
  */
 function verifica(file, atteseUnita, iso) {
   const noto = CONTEGGI_VERI[iso];
-  if (noto) atteseUnita = noto.unita;
+  if (noto) atteseUnita = !COMPLETI && noto.unitaSemplificate ? noto.unitaSemplificate : noto.unita;
   let n;
   if (fs.statSync(file).size > SOGLIA_PARSE) {
     n = contaNeiByte(file, '"shapeType"');
@@ -162,15 +171,17 @@ async function scarica(url, destinazione) {
   const lavori = [];
   for (const [iso, v] of Object.entries(paesi)) {
     if (v.fonte !== 'gb') continue;
-    if (!v.geojson) {
-      console.warn(`  ${iso}: fonte "gb" ma nessun URL in tabella, saltato`);
+    const url = COMPLETI ? v.geojson : v.geojsonSemplificato;
+    if (!url) {
+      console.warn(`  ${iso}: fonte "gb" ma nessun URL ${COMPLETI ? 'completo' : 'semplificato'} in tabella, saltato`);
       continue;
     }
-    lavori.push({ iso, livello: v.livello, unita: v.unita, url: v.geojson,
+    lavori.push({ iso, livello: v.livello, unita: v.unita, url,
       file: path.join(USCITA, `${iso}-${v.livello}.geojson`) });
   }
 
-  console.log(`da prendere: ${lavori.length} paesi da geoBoundaries`);
+  console.log(`da prendere: ${lavori.length} paesi da geoBoundaries (${COMPLETI ? 'geometria completa' : 'geometria semplificata'})`);
+  console.log(`destinazione: ${path.relative(ROOT, USCITA)}`);
   const altri = Object.values(paesi).filter((v) => v.fonte !== 'gb');
   console.log(`(${altri.filter((v) => v.fonte === 'ne').length} da Natural Earth, gia' in data_raw; ` +
     `${altri.filter((v) => v.fonte === 'nessuna').length} senza suddivisioni)\n`);

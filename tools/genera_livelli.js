@@ -32,13 +32,12 @@
  *
  * Legge:   data_raw/gb_meta_ADM1.json, _ADM2, _ADM3
  *          scaricati da https://www.geoboundaries.org/api/current/gbOpen/ALL/ADMn/
- *          data_raw/confini/regions.ndjson  (facoltativo: solo riferimento GADM)
+ *          data_raw/regions_gadm_raw.geojson (facoltativo: solo riferimento GADM)
  * Scrive:  tools/livelli_regioni.json
  */
 
 const fs = require('fs');
 const path = require('path');
-const readline = require('readline');
 
 const ROOT = path.join(__dirname, '..');
 const GREZZI = path.join(ROOT, 'data_raw');
@@ -143,10 +142,13 @@ function leggiMeta(livello) {
     per.set(r.boundaryISO, {
       unita: parseInt(r.admUnitCount, 10) || 0,
       licenza: r.boundaryLicense || 'sconosciuta',
+      dettaglioLicenza: r.licenseDetail && r.licenseDetail !== 'nan' ? r.licenseDetail : '',
+      licenzaUrl: r.licenseSource || '',
       fonteDati: r.boundarySource || '',
       anno: r.boundaryYearRepresented || '',
       nome: r.boundaryName || '',
       geojson: r.gjDownloadURL || '',
+      geojsonSemplificato: r.simplifiedGeometryGeoJSON || '',
     });
   }
   return per;
@@ -180,14 +182,17 @@ function leggiNaturalEarth() {
  * e i record guasti descritti sopra.
  */
 async function conteggiGadm() {
-  const file = path.join(GREZZI, 'confini', 'regions.ndjson');
+  // Non usare data_raw/confini/regions.ndjson: e' un *prodotto* della nuova
+  // pipeline e viene sovrascritto con geoBoundaries. Usarlo come ingresso
+  // rendeva il generatore non idempotente e al secondo giro perdeva i paesi
+  // presenti soltanto nel vecchio insieme GADM.
+  const file = path.join(GREZZI, 'regions_gadm_raw.geojson');
   if (!fs.existsSync(file)) return null;
   const per = new Map();
   const scartati = new Map();
-  const rl = readline.createInterface({ input: fs.createReadStream(file) });
-  for await (const riga of rl) {
-    if (!riga.trim()) continue;
-    const codice = JSON.parse(riga).properties.code || '';
+  const features = JSON.parse(fs.readFileSync(file, 'utf8')).features || [];
+  for (const feature of features) {
+    const codice = feature.properties.code || '';
     // il Ghana ha codici senza punto ("GHA1_2"): si prendono le prime tre
     // lettere, non il pezzo prima del punto, altrimenti finisce fra i paesi.
     // E' lo stesso difetto per cui oggi paeseDiRegione('GHA1_2') non trova
@@ -234,6 +239,9 @@ function decidi(iso, meta, ne) {
 // --- esecuzione -------------------------------------------------------------
 
 (async () => {
+  const precedenti = fs.existsSync(USCITA)
+    ? Object.keys(JSON.parse(fs.readFileSync(USCITA, 'utf8')).paesi || {})
+    : [];
   const meta = { ADM1: leggiMeta('ADM1'), ADM2: leggiMeta('ADM2'), ADM3: leggiMeta('ADM3') };
   const rif = await conteggiGadm();
   const gadm = rif ? rif.per : null;
@@ -243,6 +251,10 @@ function decidi(iso, meta, ne) {
   // l'insieme dei paesi: quelli noti a geoBoundaries piu' quelli che avevamo
   // in GADM e che geoBoundaries non conosce (finiranno tutti sul ripiego)
   const paesi = new Set([...meta.ADM1.keys(), ...meta.ADM2.keys(), ...meta.ADM3.keys()]);
+  // La tabella versionata e' anche il catalogo dei territori che non esistono
+  // in geoBoundaries. Senza questo seme, una macchina nuova priva del grezzo
+  // GADM perderebbe silenziosamente i ripieghi Natural Earth alla rigenerazione.
+  for (const iso of precedenti) paesi.add(iso);
   if (gadm) for (const iso of gadm.keys()) paesi.add(iso);
 
   const tabella = {};
@@ -256,9 +268,12 @@ function decidi(iso, meta, ne) {
       livello: d.livello,
       unita: d.unita ?? null,
       licenza: d.fonte === 'gb' && m ? m.licenza : d.fonte === 'ne' ? 'Public Domain (Natural Earth)' : null,
+      dettaglioLicenza: d.fonte === 'gb' && m ? m.dettaglioLicenza : null,
+      licenzaUrl: d.fonte === 'gb' && m ? m.licenzaUrl : null,
       fonteDati: d.fonte === 'gb' && m ? m.fonteDati : null,
       anno: d.fonte === 'gb' && m ? m.anno : null,
       geojson: d.fonte === 'gb' && m ? m.geojson : null,
+      geojsonSemplificato: d.fonte === 'gb' && m ? m.geojsonSemplificato : null,
       deciso: d.deciso || 'a mano',
       motivo: d.motivo,
     };

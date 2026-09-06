@@ -9,7 +9,7 @@ GADM vieta la ridistribuzione: è il motivo per cui `web/data/` e `data_raw/`
 non stanno nel repository. geoBoundaries si può ridistribuire, quindi un giorno
 l'APK potrà contenere i dati e avere una Release vera.
 
-L'obbligo però non è solo citare la fonte: **97 dei 198 paesi hanno licenze
+L'obbligo però non è solo citare la fonte: **96 dei 198 paesi hanno licenze
 share-alike** (ODbL o CC BY-SA). Va scritto in `CREDITI.md` con onestà.
 
 ## Fatto
@@ -19,6 +19,12 @@ share-alike** (ODbL o CC BY-SA). Va scritto in `CREDITI.md` con onestà.
 | 1. ramo separato | — | `main` fermo su `v1.2-stabile` |
 | 2. tabella dei livelli | `af06f50`, `780633f` | 198 paesi da geoBoundaries, 14 da Natural Earth, 12 senza suddivisioni |
 | 3. scaricamento | `32e6bfb` | 198 file su 198, 3.241 suddivisioni, 2,19 GB |
+| 4. geometrie semplificate | questo commit | 198 file, 130,1 MB, verificati paese per paese |
+| 5. normalizzazione | questo commit | 3.343 regioni in 212 paesi, codici `paese.slug`; sagome APK 9,8 MB |
+| 6. compatibilità backup | questo commit | 50 marcature rimappate, 4 maltesi senza equivalenza |
+| 7. nomi | questo commit | 24 mojibake corretti; nomi italiani indicizzati sui nuovi codici |
+| 8. attribuzioni | questo commit | appendice per 198 fonti in `docs/LICENZE_REGIONI.md` |
+| 9. pipeline | questo commit | `prepara_confini.js` usa geoBoundaries/NE e genera tile e sagome dalla stessa normalizzazione |
 
 ### La scoperta che ha guidato tutto
 
@@ -49,22 +55,29 @@ scritto accanto. Le 31 decisioni a mano stanno in `ECCEZIONI` dentro
   pre-semplificare. Quel ragionamento resta giusto per un ingresso da 75 MB, non
   per uno da 2,19 GB.
 
-## Da fare
+## Implementazione
 
-4. **Riscaricare in versione semplificata.** Gli URL sono nei metadati, campo
-   `simplifiedGeometryGeoJSON`. Serve un'opzione in `tools/scarica_confini.js`
-   e rigenerare la tabella perché ci metta quell'URL.
+4. **Versione semplificata.** `tools/scarica_confini.js` usa per default
+   `simplifiedGeometryGeoJSON` e scrive in `data_raw/geoboundaries_simplified`;
+   `--completi` conserva la modalità a piena risoluzione.
 5. **Codici `ISO3.slug`** generati da noi (`ITA.toscana`), non gli `shapeID`
    opachi di geoBoundaries, la cui stabilità fra release è dubbia. Lo slug
    conserva il prefisso, quindi i due punti che ricavano il paese dal codice
-   continuano a funzionare senza modifiche:
+   continuano a funzionare. Tre prefissi restano quelli storici dell'app per
+   non rompere le nazioni già salvate: `PSX`, `SDS`, `KOS` al posto di
+   `PSE`, `SSD`, `XKX`.
    - `web/app.js:1124` — `code.split('.')[0]`
    - `android/…/IndiceRegioni.kt:104` — `codiceRegione.substringBefore('.')`
-6. **Tabella di rimappatura per le 54 regioni marcate.** Vedi sotto.
-7. **Nomi**: riparare il mojibake (19 casi, `RegiÃ³n de Atacama`) e riscrivere
-   `tools/region_names.js`, oggi indicizzato sui GID di GADM (`ITA.16_1`).
-8. **`CREDITI.md`**: licenze per paese, con la nota sullo share-alike.
-9. **Pipeline**: `prepara_confini.js` cambia sorgente; `pipeline_confini.ps1` no.
+6. **Tabella di rimappatura.** `web/region-aliases.js` copre tutte le vecchie
+   regioni dei sei paesi interessati, non solo quelle marcate, più gli scarti
+   espliciti di Malta. Si applica sia allo stato vivo sia ai backup versione 1.
+7. **Nomi.** `tools/region_names.js` ripara il mojibake e usa i nuovi codici;
+   `tools/prepara_regioni.js` ferma la build davanti a collisioni non decise.
+8. **Licenze.** `CREDITI.md` riassume gli obblighi e
+   `docs/LICENZE_REGIONI.md` registra licenza, anno e fonte per paese.
+9. **Pipeline.** `prepara_confini.js` chiama la nuova preparazione. I tile
+   ricevono i 117,3 MB semplificati da geoBoundaries; le sole sagome delle
+   bandiere vengono ridotte ulteriormente al 12%, per 9,8 MB nell'APK.
 
 ### Le 54 regioni marcate
 
@@ -78,7 +91,8 @@ NLD  3 -> ADM1 (12)                   POL  5 -> ADM1 (16)
 MLT  4 -> nessuna suddivisione: si perdono
 ```
 
-50 su 54 si rimappano per nome, su sei paesi soltanto: verificabile a mano.
+Il test sul backup reale produce esattamente 50 codici validi e 4 scarti, senza
+alias mancanti.
 
 Un caso da tenere d'occhio: `NLD.14_1` si chiama letteralmente `"NA"` nei dati
 GADM attuali ed è **Zuid-Holland**, marcata come visitata. Le 14 «regioni»
@@ -98,7 +112,7 @@ Zeeuwsemeren). geoBoundaries ha le 12 province vere, col nome giusto.
 
 `admUnitCount` è compilato a parte e diverge dalla geometria. Fa fede il file, e
 i conteggi veri sono in `CONTEGGI_VERI` dentro `tools/scarica_confini.js`:
-Ungheria 19 e non 20 (manca Budapest), Iran 32 e non 33, Namibia 13 e non 14
-(confini pre-2013), Turkmenistan 5 e non 6 (manca Ashgabat), Kosovo 7 distretti
+Ungheria 19 e non 20 (manca Budapest), Iran 32 e non 33, Namibia 13 nel file
+completo ma 14 in quello semplificato, Turkmenistan 5 e non 6 (manca Ashgabat), Kosovo 7 distretti
 mentre i metadati contano i 48 comuni. Per tutti e cinque Natural Earth è stato
 guardato e non è migliore.

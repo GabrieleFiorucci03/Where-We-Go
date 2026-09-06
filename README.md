@@ -25,11 +25,11 @@ generato in pipeline.
 
 ## I dati non sono in questo repository
 
-Non per pigrizia: le suddivisioni amministrative vengono da **GADM**, la cui licenza
-consente l'uso personale ma **vieta la ridistribuzione**. Pubblicarle qui sarebbe
-ridistribuirle. Quindi il repository contiene la ricetta e non gli ingredienti — gli
-script li ricostruiscono scaricando le fonti, e ogni copia dei dati nasce sotto la
-licenza accettata da chi la scarica.
+Le suddivisioni amministrative vengono da **geoBoundaries gbOpen**, scegliendo il
+livello paese per paese, con alcuni ripieghi Natural Earth. I grezzi non sono nel
+repository perché sono grandi e rigenerabili; ricetta, scelte e attribuzioni invece
+sono versionate. Molte fonti sottostanti sono ODbL o CC BY-SA: i prodotti possono
+essere ridistribuiti rispettandone attribuzione e share-alike.
 
 C'è anche una ragione pratica: `allCountries.txt` di GeoNames pesa 1,7 GB, contro
 un limite di 100 MB per file su GitHub.
@@ -47,8 +47,10 @@ npm install
 #    scaricato da https://download.geonames.org/export/dump/
 powershell -File tools/pipeline_citta.ps1            # ~3'30"
 
-# 2. i confini: stati (Natural Earth) e regioni (GADM) in un solo PMTiles
-powershell -File tools/pipeline_confini.ps1          # ~40 s
+# 2. le regioni e i confini: download, normalizzazione e PMTiles
+node tools/genera_livelli.js
+node tools/scarica_confini.js                        # geometrie semplificate
+powershell -File tools/pipeline_confini.ps1
 
 # 3. l'indice per elenchi e ricerca (57 MB)
 node --max-old-space-size=4096 tools/prepara_indice.js
@@ -83,7 +85,7 @@ nascosta.
 
 **[`docs/PIANO.md`](docs/PIANO.md)** è il documento vivo del progetto: non un
 manuale, ma il registro delle decisioni con le misure che le hanno prodotte.
-Perché GADM e non Natural Earth per le regioni, perché FTS4 e non FTS5, perché un
+Perché geoBoundaries richiede un livello diverso per paese, perché FTS4 e non FTS5, perché un
 solo `addProtocol` per più archivi PMTiles, perché le città hanno nomi inglesi e
 cosa costa. Se questo repository serve a qualcosa a qualcuno, probabilmente è
 quello.

@@ -1,7 +1,7 @@
 # Backup del progetto, preservando la struttura delle cartelle.
 #
 # Si escludono le cose rigenerabili o enormi: node_modules, gli artefatti di
-# build Android, i dati grezzi scaricati (GeoNames, GADM) e i PMTiles. Resta
+# build Android, i dati grezzi scaricati (GeoNames, geoBoundaries) e i PMTiles. Resta
 # tutto cio' che non si puo' ricreare: sorgenti, script della pipeline,
 # documentazione, dati elaborati leggeri.
 #

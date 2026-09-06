@@ -787,7 +787,7 @@ async function main() {
   const uscita = fileElenco.replace(/\.[^.]+$/, '') + '-importato.json';
   fs.writeFileSync(
     uscita,
-    JSON.stringify({ versione: 1, salvato: Date.now(), stato: store }, null, 0)
+    JSON.stringify({ versione: 2, salvato: Date.now(), stato: store }, null, 0)
   );
 
   // Elenco ausiliario: cio' che non e' entrato e va marcato a mano nell'app.
