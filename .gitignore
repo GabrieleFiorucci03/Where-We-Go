@@ -51,6 +51,13 @@ DA VISITARE*
 # qui dentro, senza questa riga finirebbero in un commit.
 wherewego-*.json
 
+# Il nome suggerito pero' e' solo suggerito: il selettore lascia rinominare, e
+# un backup salvato come "backup.json" passava sotto la riga qui sopra. Dentro
+# c'e' l'elenco dei posti dove sei stato, che non va in un repository pubblico.
+backup.json
+backup-*.json
+*-backup.json
+
 # --------------------------------------------------------------------------
 # Sistema
 # --------------------------------------------------------------------------

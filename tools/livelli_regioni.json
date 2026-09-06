@@ -34,7 +34,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 15,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -106,19 +106,19 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 5,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "presente solo a ADM3"
+   "motivo": "presente solo a ADM3 in geoBoundaries; Natural Earth ne ha 5"
   },
   "ATF": {
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 4,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -164,15 +164,15 @@
   },
   "AZE": {
    "paese": "Azerbaijan",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "ADM1 sono 2 sole unita'"
+   "motivo": "geoBoundaries ha 2 sole unita', Natural Earth 78 distretti: niente di intermedio"
   },
   "BDI": {
    "paese": "Burundi",
@@ -284,15 +284,15 @@
   },
   "BLM": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "BLR": {
    "paese": "Belarus",
@@ -322,7 +322,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 11,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -514,7 +514,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 11,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -584,15 +584,15 @@
   },
   "CYM": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "CYP": {
    "paese": "Cyprus",
@@ -800,15 +800,15 @@
   },
   "FRO": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "FSM": {
    "paese": "Micronesia (Fed. States of)",
@@ -860,15 +860,15 @@
   },
   "GGY": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "GHA": {
    "paese": "Ghana",
@@ -1076,15 +1076,15 @@
   },
   "IMN": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "IND": {
    "paese": "India",
@@ -1102,13 +1102,13 @@
    "paese": "Ireland",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 34,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "le 26 contee non sono un livello amministrativo: ADM1 sono 4 province, ADM2 sono 166 unita'"
+   "motivo": "le 26 contee non sono un livello amministrativo (ADM1 sono 4 province, ADM2 sono 166); Natural Earth ne ha 34, che sono le contee"
   },
   "IRN": {
    "paese": "Iran (Islamic Republic of)",
@@ -1184,15 +1184,15 @@
   },
   "JEY": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "JOR": {
    "paese": "Jordan",
@@ -1436,15 +1436,15 @@
   },
   "LVA": {
    "paese": "Latvia",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "43 comuni della riforma 2021, non le regioni storiche"
+   "motivo": "le regioni storiche non ci sono: geoBoundaries ha i 43 comuni della riforma 2021, Natural Earth 119"
   },
   "MAR": {
    "paese": "Morocco",
@@ -1460,15 +1460,15 @@
   },
   "MCO": {
    "paese": "Monaco",
-   "fonte": "gb",
-   "livello": "ADM1",
-   "unita": 1,
-   "licenza": "Open Data Commons Open Database License 1.0",
-   "fonteDati": "OpenStreetMap, Wambacher",
-   "anno": "2017",
-   "geojson": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/MCO/ADM1/geoBoundaries-MCO-ADM1.geojson",
+   "fonte": "nessuna",
+   "livello": null,
+   "unita": null,
+   "licenza": null,
+   "fonteDati": null,
+   "anno": null,
+   "geojson": null,
    "deciso": "automatico",
-   "motivo": "livello 1 dichiarato dalla fonte nazionale"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (geoBoundaries ADM1)"
   },
   "MDA": {
    "paese": "Republic of Moldova",
@@ -1556,15 +1556,15 @@
   },
   "MLT": {
    "paese": "Malta",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "68 consigli locali su 316 km2 sono troppo minuti da marcare"
+   "motivo": "le 5 regioni statistiche non esistono in nessuna fonte libera: geoBoundaries e Natural Earth danno entrambi i 68 consigli locali"
   },
   "MMR": {
    "paese": "Myanmar",
@@ -1642,7 +1642,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 3,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -1714,7 +1714,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 3,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -1990,7 +1990,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 5,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -2110,7 +2110,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 3,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -2182,7 +2182,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 2,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -2252,15 +2252,15 @@
   },
   "SVN": {
    "paese": "Slovenia",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "ADM1 sono 2 regioni di coesione, ADM2 sono 213 comuni: le 12 regioni statistiche non ci sono"
+   "motivo": "le 12 regioni statistiche non ci sono: geoBoundaries ha 2 regioni di coesione o 213 comuni, Natural Earth 193 comuni"
   },
   "SWE": {
    "paese": "Sweden",
@@ -2314,7 +2314,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 6,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
@@ -2564,27 +2564,27 @@
   },
   "VGB": {
    "paese": "",
-   "fonte": "ne",
+   "fonte": "nessuna",
    "livello": null,
    "unita": null,
-   "licenza": "Public Domain (Natural Earth)",
+   "licenza": null,
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "automatico",
-   "motivo": "assente da geoBoundaries a ogni livello"
+   "motivo": "l'unica suddivisione disponibile coincide con la nazione (Natural Earth)"
   },
   "VIR": {
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 3,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,
    "geojson": null,
    "deciso": "a mano",
-   "motivo": "presente solo a ADM3"
+   "motivo": "presente solo a ADM3 in geoBoundaries; Natural Earth ne ha 3"
   },
   "VNM": {
    "paese": "Viet Nam",
@@ -2614,7 +2614,7 @@
    "paese": "",
    "fonte": "ne",
    "livello": null,
-   "unita": null,
+   "unita": 3,
    "licenza": "Public Domain (Natural Earth)",
    "fonteDati": null,
    "anno": null,

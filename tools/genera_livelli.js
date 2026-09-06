@@ -86,14 +86,29 @@ const ECCEZIONI = {
   MTQ: { fonte: 'gb', livello: 'ADM3', motivo: 'arrondissement: unico livello presente' },
   REU: { fonte: 'gb', livello: 'ADM3', motivo: 'arrondissement: unico livello presente' },
 
-  // --- dove nessun livello geoBoundaries e' utilizzabile: ripiego ---
-  SVN: { fonte: 'ne', livello: null, motivo: 'ADM1 sono 2 regioni di coesione, ADM2 sono 213 comuni: le 12 regioni statistiche non ci sono' },
-  IRL: { fonte: 'ne', livello: null, motivo: 'le 26 contee non sono un livello amministrativo: ADM1 sono 4 province, ADM2 sono 166 unita\'' },
-  MLT: { fonte: 'ne', livello: null, motivo: '68 consigli locali su 316 km2 sono troppo minuti da marcare' },
-  LVA: { fonte: 'ne', livello: null, motivo: '43 comuni della riforma 2021, non le regioni storiche' },
-  AZE: { fonte: 'ne', livello: null, motivo: 'ADM1 sono 2 sole unita\'' },
-  ASM: { fonte: 'ne', livello: null, motivo: 'presente solo a ADM3' },
-  VIR: { fonte: 'ne', livello: null, motivo: 'presente solo a ADM3' },
+  // --- dove il ripiego Natural Earth funziona ---
+  IRL: { fonte: 'ne', livello: null, motivo: 'le 26 contee non sono un livello amministrativo (ADM1 sono 4 province, ADM2 sono 166); Natural Earth ne ha 34, che sono le contee' },
+  ASM: { fonte: 'ne', livello: null, motivo: 'presente solo a ADM3 in geoBoundaries; Natural Earth ne ha 5' },
+  VIR: { fonte: 'ne', livello: null, motivo: 'presente solo a ADM3 in geoBoundaries; Natural Earth ne ha 3' },
+
+  // --- dove nessuna fonte libera ha la granularita' giusta: nessuna regione ---
+  //
+  // Il ripiego su Natural Earth qui non funziona, e va detto perche': NE ha lo
+  // stesso difetto di geoBoundaries, cioe' e' troppo FINE, non troppo grosso.
+  // Malta 68 consigli, Slovenia 193 comuni, Lettonia 119, Azerbaigian 78: sono
+  // liste di comuni, non di regioni.
+  //
+  // Meglio nessuna suddivisione che suddivisioni sbagliate. Il paese resta
+  // marcabile come nazione, ed e' uno stato previsto: IndiceRegioni.kt dice
+  // che "un paese senza suddivisioni non ha il file, e non e' un guasto".
+  //
+  // Costo noto e accettato: le 4 regioni maltesi marcate nel backup del
+  // 2026-09-06 non hanno una destinazione e vanno perse. Restano nel backup,
+  // e Malta resta segnata come nazione visitata.
+  MLT: { fonte: 'nessuna', livello: null, motivo: 'le 5 regioni statistiche non esistono in nessuna fonte libera: geoBoundaries e Natural Earth danno entrambi i 68 consigli locali' },
+  SVN: { fonte: 'nessuna', livello: null, motivo: 'le 12 regioni statistiche non ci sono: geoBoundaries ha 2 regioni di coesione o 213 comuni, Natural Earth 193 comuni' },
+  LVA: { fonte: 'nessuna', livello: null, motivo: 'le regioni storiche non ci sono: geoBoundaries ha i 43 comuni della riforma 2021, Natural Earth 119' },
+  AZE: { fonte: 'nessuna', livello: null, motivo: 'geoBoundaries ha 2 sole unita\', Natural Earth 78 distretti: niente di intermedio' },
 };
 
 /**
@@ -138,6 +153,28 @@ function leggiMeta(livello) {
 }
 
 /**
+ * Conteggio Natural Earth admin-1 per paese.
+ *
+ * Serve per due cose, e la seconda e' nata da un errore: il ripiego su Natural
+ * Earth era stato scelto per Malta, Slovenia, Lettonia e Azerbaigian dandolo
+ * per buono senza guardarlo. Guardandolo, NE ha lo stesso difetto di
+ * geoBoundaries su quei paesi - 68 consigli maltesi, 193 comuni sloveni - ed e'
+ * troppo fine, non piu' grosso. Da qui il controllo automatico piu' sotto:
+ * un ripiego non si dichiara utilizzabile finche' non se ne contano le unita'.
+ */
+function leggiNaturalEarth() {
+  const file = path.join(GREZZI, 'regions_10m.geojson');
+  if (!fs.existsSync(file)) return null;
+  const g = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const per = new Map();
+  for (const f of g.features) {
+    const iso = f.properties.adm0_a3;
+    if (iso) per.set(iso, (per.get(iso) || 0) + 1);
+  }
+  return per;
+}
+
+/**
  * Conteggio GADM per paese, se il grezzo c'e'. Serve solo da riferimento.
  * Restituisce anche i codici scartati, che vanno mostrati: sono le aree contese
  * e i record guasti descritti sopra.
@@ -164,18 +201,34 @@ async function conteggiGadm() {
 
 // --- decisione --------------------------------------------------------------
 
-function decidi(iso, meta) {
+function decidi(iso, meta, ne) {
+  const unitaNe = ne ? ne.get(iso) || 0 : 0;
   const ecc = ECCEZIONI[iso];
+  let d;
   if (ecc) {
     const m = ecc.fonte === 'gb' ? meta[ecc.livello].get(iso) : null;
-    return { ...ecc, unita: m ? m.unita : null, deciso: 'a mano' };
+    d = { ...ecc, unita: ecc.fonte === 'gb' ? (m ? m.unita : null) : ecc.fonte === 'ne' ? unitaNe : null, deciso: 'a mano' };
+  } else {
+    // regola automatica: ADM1, che e' il livello 1 dichiarato dal paese stesso
+    const m1 = meta.ADM1.get(iso);
+    d = m1 && m1.unita
+      ? { fonte: 'gb', livello: 'ADM1', unita: m1.unita, motivo: 'livello 1 dichiarato dalla fonte nazionale', deciso: 'automatico' }
+      : { fonte: 'ne', livello: null, unita: unitaNe, motivo: 'assente da geoBoundaries a ogni livello', deciso: 'automatico' };
   }
-  // regola automatica: ADM1, che e' il livello 1 dichiarato dal paese stesso
-  const m1 = meta.ADM1.get(iso);
-  if (!m1 || !m1.unita) {
-    return { fonte: 'ne', livello: null, motivo: 'assente da geoBoundaries a ogni livello', deciso: 'automatico' };
+
+  // Una sola suddivisione non e' una suddivisione: coincide con la nazione, che
+  // e' gia' marcabile per conto suo. Meglio dichiararlo che avere una regione
+  // fantasma sovrapposta al paese.
+  if (d.fonte !== 'nessuna' && d.unita === 1) {
+    return { fonte: 'nessuna', livello: null, unita: null, deciso: d.deciso,
+      motivo: `l'unica suddivisione disponibile coincide con la nazione (${d.fonte === 'gb' ? 'geoBoundaries ' + d.livello : 'Natural Earth'})` };
   }
-  return { fonte: 'gb', livello: 'ADM1', unita: m1.unita, motivo: 'livello 1 dichiarato dalla fonte nazionale', deciso: 'automatico' };
+  // Un ripiego senza dati non e' un ripiego.
+  if (d.fonte === 'ne' && !d.unita) {
+    return { fonte: 'nessuna', livello: null, unita: null, deciso: d.deciso,
+      motivo: 'assente sia da geoBoundaries sia da Natural Earth' };
+  }
+  return d;
 }
 
 // --- esecuzione -------------------------------------------------------------
@@ -184,6 +237,8 @@ function decidi(iso, meta) {
   const meta = { ADM1: leggiMeta('ADM1'), ADM2: leggiMeta('ADM2'), ADM3: leggiMeta('ADM3') };
   const rif = await conteggiGadm();
   const gadm = rif ? rif.per : null;
+  const ne = leggiNaturalEarth();
+  if (!ne) console.warn('avviso: manca data_raw/regions_10m.geojson, i ripieghi non sono verificabili');
 
   // l'insieme dei paesi: quelli noti a geoBoundaries piu' quelli che avevamo
   // in GADM e che geoBoundaries non conosce (finiranno tutti sul ripiego)
@@ -193,7 +248,7 @@ function decidi(iso, meta) {
   const tabella = {};
   const daGuardare = [];
   for (const iso of [...paesi].sort()) {
-    const d = decidi(iso, meta);
+    const d = decidi(iso, meta, ne);
     const m = d.livello ? meta[d.livello].get(iso) : meta.ADM1.get(iso);
     tabella[iso] = {
       paese: (m && m.nome) || '',
@@ -236,7 +291,19 @@ function decidi(iso, meta) {
   console.log(`  paesi totali:          ${Object.keys(tabella).length}`);
   console.log(`  da geoBoundaries:      ${conta('gb')}  (${unitaGb} suddivisioni)`);
   console.log(`  ripiego Natural Earth: ${conta('ne')}  (${neAMano} per scelta, ${conta('ne') - neAMano} perche' assenti da geoBoundaries)`);
+  console.log(`  senza suddivisioni:    ${conta('nessuna')}`);
   console.log(`  decisi a mano:         ${Object.values(tabella).filter((v) => v.deciso === 'a mano').length}`);
+
+  // Il controllo che sarebbe servito prima: un ripiego automatico con molte
+  // unita' e' quasi sempre una lista di comuni, non di regioni. Non lo si
+  // corregge da soli - dipende dal paese - ma non deve passare in silenzio.
+  const ripieghiSospetti = Object.entries(tabella)
+    .filter(([, v]) => v.fonte === 'ne' && v.deciso === 'automatico' && (v.unita || 0) > 40);
+  if (ripieghiSospetti.length) {
+    console.log(`\n=== RIPIEGHI DA GUARDARE: ${ripieghiSospetti.length} ===`);
+    ripieghiSospetti.forEach(([iso, v]) => console.log(`  ${iso}: Natural Earth ne ha ${v.unita}, probabile lista di comuni`));
+    console.log('Se sono comuni e non regioni, la voce va messa in ECCEZIONI con fonte "nessuna".');
+  }
 
   if (rif && rif.scartati.size) {
     const tot = [...rif.scartati.values()].reduce((s, n) => s + n, 0);
