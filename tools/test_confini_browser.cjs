@@ -23,7 +23,12 @@ const views = [
   const errors = [];
   page.on('pageerror', e=>errors.push(e.message));
   await page.route('**/app.js', async route => {
-    const source = fs.readFileSync(path.join(root,'web/app.js'),'utf8');
+    let source = fs.readFileSync(path.join(root,'web/app.js'),'utf8').replace(/\r\n/g,'\n');
+    if (process.env.CONFINI_OLD_LINES) source = source
+      .replace("const sorgenteLinee = await preparaSorgenteConfini(TILE_LINEE);", '')
+      .replace("'border-lines': { type: 'vector', url: sorgenteLinee.url },", '')
+      .replace("source: 'border-lines',\n          'source-layer': 'region-borders'", "source: 'boundaries',\n          'source-layer': 'regions'")
+      .replace("source: 'border-lines',\n          'source-layer': 'country-borders'", "source: 'boundaries',\n          'source-layer': 'countries'");
     await route.fulfill({contentType:'text/javascript', body:source +
       '\nwindow.__confini = {get map(){return map}, get store(){return store}, get flags(){return activeFlags}, refreshOpacity, attivaRegioni, disattivaRegioni, sagoma};'});
   });
@@ -45,6 +50,16 @@ const views = [
   await page.goto('http://localhost:8080');
   await page.waitForFunction(()=>window.__confini?.map?.isStyleLoaded(), null, {timeout:90000});
   await page.addStyleTag({content:'#hud,#toast {display:none!important}'});
+  if (process.env.CONFINI_LINES_ONLY) {
+    try { await require('./test_linee_browser.cjs')(page,out,process.env.CONFINI_LINES_ONLY,!!process.env.CONFINI_OLD_LINES); }
+    finally { await browser.close(); }
+    return;
+  }
+  if (process.env.CONFINI_GAPS_ONLY) {
+    try { await require('./test_confini_vuoti.cjs')(page,out,process.env.CONFINI_GAPS); }
+    finally { await browser.close(); }
+    return;
+  }
   if (process.env.CONFINI_MIXED_ONLY) {
     try { await require('./test_confini_misti.cjs')(page,out); }
     finally { await browser.close(); }
@@ -98,6 +113,7 @@ const views = [
   assert.equal(countryMask.code,'ITA');
   assert(['Polygon','MultiPolygon'].includes(countryMask.type));
   await require('./test_confini_misti.cjs')(page,out);
+  if(process.env.CONFINI_GAPS) await require('./test_confini_vuoti.cjs')(page,out,process.env.CONFINI_GAPS);
   const mapErrors=await page.evaluate(()=>window.__mapErrors);
   fs.writeFileSync(path.join(out,'browser.json'),JSON.stringify({invariants,captures,errors,mapErrors,backupRoundTrip:true,touchThreshold:true},null,2));
   assert.deepEqual(errors,[]);

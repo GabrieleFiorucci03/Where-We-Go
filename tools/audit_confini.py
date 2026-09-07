@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / 'data_raw/confini-audit/python'))
 from shapely import make_valid, union_all
 from shapely.geometry import shape
 from shapely.ops import transform
+from shapely.prepared import prep
 from pyproj import Geod, Transformer
 
 GEOD = Geod(ellps='WGS84')
@@ -59,6 +60,24 @@ def audit(data, raw):
             regions.setdefault(f['properties']['country'], []).append(f)
     report = {'sample': {}, 'international_overlaps_km2': {}, 'invalid_raw': [], 'counts': {
         'countries': len(countries), 'regions': sum(map(len, regions.values()))}}
+    gap_file = raw / 'shared-border-gaps.geojson'
+    if gap_file.exists():
+        country_geoms = {code: geometry(f) for code, f in countries.items()}
+        prepared = {code: prep(g) for code, g in country_geoms.items()}
+        gaps = read(gap_file)['features']
+        report['shared_borders'] = {'checked': len(gaps), 'uncovered': []}
+        for f in gaps:
+            target = geometry(f)
+            if any(prepared[c].covers(target) for c in f['properties']['owners']):
+                continue
+            coverage = union_all([country_geoms[c].intersection(target) for c in f['properties']['owners']])
+            remaining = target.difference(coverage)
+            if remaining.area > 1e-12:
+                context = target.envelope.buffer(1e-7)
+                nearby = union_all([country_geoms[c].intersection(context) for c in f['properties']['owners']])
+                if remaining.difference(nearby.buffer(1e-8)).area > 1e-12:
+                    report['shared_borders']['uncovered'].append({'id': f['properties']['id'], 'area_degrees2': remaining.area})
+        print('Vuoti internazionali:', json.dumps(report['shared_borders']), flush=True)
     # L'identita' paese = unione regioni implica la stessa copertura in tutte
     # le combinazioni acceso/spento, anche con il solo vicino acceso.
     report['mixed_mode'] = {'checked': 0, 'mismatches': []}
@@ -84,6 +103,10 @@ def audit(data, raw):
         errors = []
         for f, g in zip(fs, gs):
             mask = masks[f['properties']['code']]
+            if g.equals(mask):
+                errors.append({'code': f['properties']['code'], 'difference_km2': 0,
+                               'hausdorff_px_z12': 0})
+                continue
             errors.append({
                 'code': f['properties']['code'],
                 'difference_km2': area(g.symmetric_difference(mask)),
@@ -116,3 +139,5 @@ if __name__ == '__main__':
     args.out.write_text(json.dumps(result, indent=2), encoding='utf-8')
     if result['mixed_mode']['mismatches']:
         raise ValueError('Sagome stato/regioni diverse: vedere mixed_mode nel rapporto')
+    if result.get('shared_borders', {}).get('uncovered'):
+        raise ValueError('Vuoti internazionali ancora scoperti: vedere shared_borders nel rapporto')

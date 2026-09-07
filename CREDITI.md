@@ -24,6 +24,12 @@ paese, con anno, licenza e fonte dichiarata, è in
 Le elaborazioni applicate dal progetto sono: scelta del livello, correzione di
 alcuni nomi con codifica guasta, codici sintetici `ISO3.slug`, semplificazione
 delle sagome usate nell'interfaccia e creazione dei tile vettoriali.
+I vuoti fra piu paesi vengono completati entro la copertura amministrativa
+Natural Earth, ripartendo la superficie aggiunta fra le regioni adiacenti.
+L'intervento e additivo: non rimuove isole o rivendicazioni delle fonti.
+Le sole linee di visualizzazione sono deduplicate in un archivio separato:
+nelle sovrapposizioni si da precedenza alla superficie nazionale piu piccola,
+con spareggio per codice. I perimetri esterni regionali non vengono ripetuti.
 Per tutti i 212 paesi con suddivisioni disponibili, anche
 il contorno nazionale è ricavato dall'unione delle regioni. Questi contorni
 mantengono la provenienza della fonte regionale: l'elenco effettivo viene

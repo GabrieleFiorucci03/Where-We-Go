@@ -14,6 +14,46 @@ Ispirazione: *Countries Been*, con l'aggiunta del riempimento a bandiera.
 
 ## Da fare prima della pubblicazione
 
+### Linee internazionali uniche — 2026-09-07
+
+Il riempimento corretto conservava le sovrapposizioni delle fonti; tracciare
+ogni perimetro produceva quindi bordi neri paralleli. `linee_confini.py`
+costruisce una partizione destinata solo al disegno: nelle sovrapposizioni
+da precedenza al paese con superficie piu piccola, per conservare anche
+microstati ed enclavi (a parita decide il codice). Non modifica poligoni,
+maschere, codici o selezione. Questa e una regola grafica, non un arbitrato
+sui territori contesi.
+
+`border-lines.pmtiles` contiene i livelli `country-borders` e `region-borders`:
+ogni tratto nazionale e emesso una volta, le regioni emettono solo i bordi
+interni ritagliati nella partizione visibile. La pipeline genera questo
+archivio insieme ai riempimenti e lo include nella verifica e nel manifest.
+`test_linee_browser.cjs` verifica separatamente la scomparsa dei vecchi bordi
+e la presenza di quelli conservati, anche nelle modalita miste.
+
+### Continuita della copertura internazionale — 2026-09-07
+
+La correzione del caso misto descritta sotto non bastava: due modalita
+identiche potevano condividere lo stesso vuoto. `allinea_confini.py` cerca
+ora i vuoti nell'intera copertura mondiale, confrontandola con il riferimento
+amministrativo Natural Earth. Completa le parti scoperte che toccano almeno
+due paesi, anche se aperte sulla costa, e le ripartisce secondo quel riferimento.
+All'interno del paese usa la prossimita ai bordi regionali; un vuoto lungo
+piu regioni viene suddiviso, senza assegnarlo tutto a una sola regione.
+
+E una correzione additiva: nessuna parte delle geometrie sorgenti viene
+cancellata. Le sovrapposizioni gia dichiarate dalle fonti nei territori
+contesi restano; il mare esterno al riferimento e i fori interni a un solo
+paese non vengono completati. Il riferimento e amministrativo: comprende
+anche le porzioni lacustri assegnate ai paesi, come nel precedente livello
+nazionale Natural Earth. Non e una maschera fisica delle terre emerse.
+
+Le aggiunte entrano nei tile regionali, nelle relative bandiere e nell'unione
+nazionale: nessun livello di sfondo nasconde i vuoti. Ogni superficie corretta
+e registrata in `shared-border-gaps.geojson`; un audit indipendente ne verifica
+la copertura sui file prodotti. `test_confini_vuoti.cjs` aggiunge controlli
+assoluti su punti prima scoperti, oltre al confronto fra modalita.
+
 ### Correzione dei confini misti — 2026-09-07
 
 Il controllo precedente sui contorni nazionali (fase 3 sotto) manteneva due
@@ -37,6 +77,12 @@ gli strumenti che leggono i metadati; queste non disegnano la mappa.
 `audit_confini.py` controlla l'identita geometrica per ogni paese;
 `test_confini_misti.cjs` confronta la copertura renderizzata nelle quattro
 combinazioni acceso/spento, alla soglia e fino a zoom 12.
+
+Per la build condivisa del 2026-09-07 l'audit ha controllato tutti i 27.030
+vuoti candidati e non ne ha lasciato nessuno scoperto. Il collaudo browser ha
+superato 72 controlli assoluti sui nove punti campione internazionali, oltre a
+112 confronti fra modalità miste (massimo 5 pixel isolati). Il PMTiles misura
+42,0 MB; le sagome regionali compresse 36,0 MiB e vengono caricate a richiesta.
 
 Le misure e i criteri della fase 3 sotto descrivono la versione precedente.
 

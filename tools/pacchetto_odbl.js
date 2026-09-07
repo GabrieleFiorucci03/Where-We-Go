@@ -27,6 +27,7 @@ const DATA = path.resolve(process.env.CONFINI_DATA_DIR || path.join(ROOT, 'web',
 const REGIONI = path.join(DATA, 'regions');
 const NAZIONI = path.join(DATA, 'countries.geojson');
 const TILE = path.join(DATA, 'boundaries.pmtiles');
+const LINEE = path.join(DATA, 'border-lines.pmtiles');
 const LICENZE = path.join(ROOT, 'docs', 'LICENZE_REGIONI.md');
 const OUT = path.resolve(process.env.DERIVATI_OUT_DIR || path.join(ROOT, 'dist', 'dati-derivati'));
 
@@ -53,6 +54,7 @@ function modifiche(v) {
     'fusione delle suddivisioni omonime arrivate come feature separate',
     'riduzione geometrica per la resa a schermo e arrotondamento delle coordinate',
     'rimozione degli attributi non usati dall’app',
+    'completamento additivo dei vuoti fra paesi sulla copertura amministrativa Natural Earth, ripartito fra le regioni adiacenti',
   ];
   if (v.fonte === 'ne') elenco[0] = 'ripiego su Natural Earth admin-1 (pubblico dominio)';
   return elenco;
@@ -181,6 +183,7 @@ function main() {
       'tools/scarica_confini.js — scarica geoBoundaries ai commit fissati in livelli_regioni.json',
       'tools/prepara_regioni.js — normalizza nomi, codici e geometrie',
       'tools/prepara_confini.js — genera i tile PMTiles e le sagome dell’APK',
+      'tools/linee_confini.py — estrae una rete grafica unica dalle superfici sovrapposte, preservando i piccoli stati',
       'tools/pacchetto_odbl.js — costruisce questo pacchetto',
     ],
     conteggi: {
@@ -197,6 +200,10 @@ function main() {
           sha256: sha256(TILE),
         }
       : null,
+    lineeDistribuite: fs.existsSync(LINEE) ? {
+      file: 'border-lines.pmtiles', byte: fs.statSync(LINEE).size, sha256: sha256(LINEE),
+      nota: 'Rete grafica separata: precedenza alle superfici nazionali piu piccole; bordi regionali solo interni. Le superfici originali restano nei dati nazionali e regionali.',
+    } : null,
     paesi: voci,
     confiniNazionaliDerivati: confiniDerivati,
   };

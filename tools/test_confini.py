@@ -27,7 +27,8 @@ class CanonicalTests(unittest.TestCase):
                         map(json.loads, (folder / 'countries.ndjson').read_text(encoding='utf-8').splitlines())}
             for code, g in rendered.items():
                 self.assertTrue(g.equals(geometry(read(folder / 'country-shapes' / f'{code}.geojson'))))
-            self.assertEqual((folder / 'regions.ndjson').read_text(encoding='utf-8'), raw)
+            self.assertEqual([json.loads(line) for line in (folder / 'regions.ndjson').read_text(encoding='utf-8').splitlines()],
+                             [json.loads(line) for line in raw.splitlines()])
             return report, rendered
 
     def test_mixed_modes_use_identical_surface(self):

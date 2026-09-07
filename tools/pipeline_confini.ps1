@@ -75,6 +75,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Validita delle sagome non verificata' }
 & $Python (Join-Path $PSScriptRoot 'canonizza_confini.py') --data $dati --work $confini `
   --reference (Join-Path $progetto 'data_raw\confini\countries_reference.geojson')
 if ($LASTEXITCODE -ne 0) { throw 'Canonizzazione fallita; dati in linea invariati' }
+& $Python (Join-Path $PSScriptRoot 'simplify_corrected_masks.py') $build
+if ($LASTEXITCODE -ne 0) { throw 'Riduzione delle sagome corrette fallita' }
 
 Passo 2 'Generazione dei tile'
 # Due livelli in un archivio solo: -L <nome>:<file>. Niente
@@ -101,6 +103,7 @@ Passo 2 'Generazione dei tile'
   )
 
 Passo 3 'Verifica dei prodotti in staging'
+& (Join-Path $PSScriptRoot 'pipeline_linee.ps1') -Data $dati -Work $confini -Python $Python
 $destinazione = Join-Path $dati 'boundaries.pmtiles'
 Copy-Item (Join-Path $confini 'boundaries.pmtiles') $destinazione -Force
 & node (Join-Path $PSScriptRoot 'verifica_confini.js') $dati $confini $Baseline

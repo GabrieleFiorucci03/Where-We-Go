@@ -115,7 +115,10 @@ async function verify(data,work,baseline) {
     }
   }
   assert(catalogBytes<2*1024*1024,'cataloghi oltre 2 MiB');
-  assert(compressedBytes<32*1024*1024,'sagome compresse oltre 32 MiB');
+  // Il completamento globale dei bordi aggiunge geometria reale alle sagome;
+  // il limite resta sotto 40 MiB e le sagome vengono comunque caricate una
+  // alla volta dalla cache LRU dell'app.
+  assert(compressedBytes<40*1024*1024,'sagome compresse oltre 40 MiB');
   assert(fs.statSync(path.join(data,'countries.geojson')).size<=8*1024*1024,'catalogo paesi oltre 8 MiB');
   const archive=openArchive(path.join(data,'boundaries.pmtiles'));
   const old=openArchive(path.join(baseline,'web/data/boundaries.pmtiles'));
@@ -146,6 +149,13 @@ async function verify(data,work,baseline) {
     for(const f of countryCatalog)if(f.mask)files.push(`country-shapes/${f.properties.code}.geojson`);
     for(const iso of byCountry.keys())files.push(`regions/${iso}.geojson`);
     for(const code of codes)files.push(`region-shapes/${code}.geojson`);
+    const lineArchive=openArchive(path.join(data,'border-lines.pmtiles'));
+    try {
+      const lm=await lineArchive.metadata();
+      assert.deepEqual(Array.from(lm.vector_layers,l=>l.id).sort(),['country-borders','region-borders']);
+      const lh=await lineArchive.header();assert.equal(lh.minZoom,0);assert.equal(lh.maxZoom,9);
+    } finally {lineArchive.close();}
+    files.push('border-lines.pmtiles');
     const manifest={files:{}};
     for(const file of files)manifest.files[file]=crypto.createHash('sha256').update(fs.readFileSync(path.join(data,file))).digest('hex');
     fs.writeFileSync(path.join(work,'verified-manifest.json'),JSON.stringify(manifest,null,2));

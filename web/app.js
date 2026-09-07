@@ -36,6 +36,7 @@ import { migraCodiciRegioni } from './region-aliases.js';
 /** Nome dell'archivio dei tile delle citta', identico su disco e sul server. */
 const TILE_CITTA = 'cities.pmtiles';
 const TILE_CONFINI = 'boundaries.pmtiles';
+const TILE_LINEE = 'border-lines.pmtiles';
 
 /**
  * Prepara la sorgente delle citta'.
@@ -418,23 +419,22 @@ async function preparaSorgenteCitta() {
  * caricarli tutti insieme e' il rischio 3b di §11 (14 MB di GeoJSON fanno
  * crashare il rendering con 2 GB di RAM).
  */
-async function preparaSorgenteConfini() {
+async function preparaSorgenteConfini(filename = TILE_CONFINI) {
   const protocollo = protocolloCondiviso();
 
   if (suAndroid) {
-    // Sul telefono i PMTiles non sono nell'APK (§4.2): si copiano a mano. Se
-    // mancano bisogna dirlo cosi', col percorso: ricadere sulla richiesta HTTP
-    // darebbe un 404 che manda a cercare nel posto sbagliato.
-    if (dimensioneFile(TILE_CONFINI) <= 0) throw new Error(mancaArchivio(TILE_CONFINI));
-    const archivio = new pmtiles.PMTiles(new AndroidBridgeSource(TILE_CONFINI));
+    // Il ponte legge gli asset non compressi nell'APK oppure una copia
+    // esterna. Un archivio mancante va segnalato senza tentare HTTP.
+    if (dimensioneFile(filename) <= 0) throw new Error(mancaArchivio(filename));
+    const archivio = new pmtiles.PMTiles(new AndroidBridgeSource(filename));
     protocollo.add(archivio);
     console.log('[confini] tile letti dal disco tramite il ponte Kotlin');
     return { url: `pmtiles://${archivio.source.getKey()}` };
   }
 
-  const res = await fetch(`data/${TILE_CONFINI}`, { method: 'HEAD' });
-  if (!res.ok) throw new Error(`data/${TILE_CONFINI}: HTTP ${res.status}`);
-  const assoluto = new URL(`data/${TILE_CONFINI}`, location.href).href;
+  const res = await fetch(`data/${filename}`, { method: 'HEAD' });
+  if (!res.ok) throw new Error(`data/${filename}: HTTP ${res.status}`);
+  const assoluto = new URL(`data/${filename}`, location.href).href;
   const mb = Number(res.headers.get('content-length') || 0) / 1048576;
   console.log(`[confini] tile via HTTP, ${mb.toFixed(1)} MB`);
   return { url: `pmtiles://${assoluto}` };
@@ -1792,6 +1792,7 @@ async function main() {
   cittaDaTile = sorgenteCitta.tipo === 'pmtiles';
 
   const sorgenteConfini = await preparaSorgenteConfini();
+  const sorgenteLinee = await preparaSorgenteConfini(TILE_LINEE);
 
   // countries.geojson non serve piu' a disegnare — a quello pensano i tile —
   // ma conserva i metadati e il riferimento alle sagome nazionali caricate
@@ -1868,6 +1869,7 @@ async function main() {
           url: sorgenteConfini.url,
           promoteId: { countries: 'code', regions: 'code' },
         },
+        'border-lines': { type: 'vector', url: sorgenteLinee.url },
         places: cittaDaTile
           ? { type: 'vector', url: sorgenteCitta.url }
           : { type: 'geojson', data: places },
@@ -1894,9 +1896,10 @@ async function main() {
         },
         {
           id: 'regions-line',
+          // Solo suddivisioni interne: il perimetro nazionale ha una sola linea.
           type: 'line',
-          source: 'boundaries',
-          'source-layer': 'regions',
+          source: 'border-lines',
+          'source-layer': 'region-borders',
           filter: FILTRO_NESSUNA_REGIONE,
           paint: {
             'line-color': COLOR.regionBorder,
@@ -1906,9 +1909,10 @@ async function main() {
         },
         {
           id: 'countries-line',
+          // Rete deduplicata: i poligoni di riempimento possono sovrapporsi.
           type: 'line',
-          source: 'boundaries',
-          'source-layer': 'countries',
+          source: 'border-lines',
+          'source-layer': 'country-borders',
           paint: {
             'line-color': COLOR.border,
             'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 6, 1.4, 10, 2],
