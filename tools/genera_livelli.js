@@ -89,6 +89,7 @@ const ECCEZIONI = {
   IRL: { fonte: 'ne', livello: null, motivo: 'le 26 contee non sono un livello amministrativo (ADM1 sono 4 province, ADM2 sono 166); Natural Earth ne ha 34, che sono le contee' },
   ASM: { fonte: 'ne', livello: null, motivo: 'presente solo a ADM3 in geoBoundaries; Natural Earth ne ha 5' },
   VIR: { fonte: 'ne', livello: null, motivo: 'presente solo a ADM3 in geoBoundaries; Natural Earth ne ha 3' },
+  MDV: { fonte: 'ne', livello: null, motivo: 'in geoBoundaries sei atolli (Raa, Thaa, Vaavu, Lhaviyani, Dhaalu, Faafu) sono rettangoli di mare da 6-11 vertici: l'unione regionale dava un contorno nazionale di 30.000 km2 d'oceano invece di isole. Natural Earth 10m ha tutti e 21 gli atolli come isole vere' },
 
   // --- dove nessuna fonte libera ha la granularita' giusta: nessuna regione ---
   //

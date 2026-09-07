@@ -95,6 +95,14 @@ async function verify(data,work,baseline) {
     if(!byCountry.has(f.properties.country))byCountry.set(f.properties.country,[]);
     byCountry.get(f.properties.country).push(f);
   }
+  // Un cambio di fonte regionale e' voluto, e cambia codici e nomi: il
+  // confronto cieco con la baseline lo scambierebbe per un guasto. Va
+  // dichiarato con CONFINI_CAMBI_ATTESI=ISO[,ISO...]; per quei paesi il
+  // confronto viene sostituito da un resoconto delle differenze, che finisce
+  // in verification.json. Chi legge il rapporto vede cosa e' cambiato, invece
+  // di non vedere niente.
+  const attesi=new Set((process.env.CONFINI_CAMBI_ATTESI||'').split(',').map(s=>s.trim()).filter(Boolean));
+  const cambiDichiarati={};
   let maskBytes=0,compressedBytes=0,maxShapeBytes=0,catalogBytes=0;
   const ringCount=g=>polys(g).reduce((n,p)=>n+p.length,0);
   for(const [iso,features] of byCountry){
@@ -102,7 +110,15 @@ async function verify(data,work,baseline) {
     catalogBytes+=fs.statSync(filename).size;
     const before=json(path.join(baseline,'web/data/regions',`${iso}.geojson`)).features;
     const props=fs=>fs.map(f=>f.properties).sort((a,b)=>a.code.localeCompare(b.code));
-    assert.deepEqual(props(cat),props(before),`proprieta ${iso}`);
+    if(attesi.has(iso)) {
+      const elenco=fs=>fs.map(f=>f.properties.code).sort();
+      const prima=elenco(before),dopo=elenco(cat);
+      cambiDichiarati[iso]={
+        prima:prima.length,dopo:dopo.length,
+        rimossi:prima.filter(c=>!dopo.includes(c)),
+        aggiunti:dopo.filter(c=>!prima.includes(c)),
+      };
+    } else assert.deepEqual(props(cat),props(before),`proprieta ${iso}`);
     assert.equal(cat.length,features.length);
     for(const f of features){
       const maskFile=path.join(data,'region-shapes',`${f.properties.code}.geojson`);
@@ -114,6 +130,11 @@ async function verify(data,work,baseline) {
       maxShapeBytes=Math.max(maxShapeBytes,bytes.length);
     }
   }
+  // Una dichiarazione che non corrisponde a niente e' rimasta indietro: o il
+  // codice e' sbagliato, o il cambiamento non e' avvenuto.
+  for(const iso of attesi)assert(cambiDichiarati[iso],`cambio dichiarato per ${iso}, ma il paese non ha regioni nella build`);
+  for(const [iso,d] of Object.entries(cambiDichiarati))
+    assert(d.rimossi.length||d.aggiunti.length,`cambio dichiarato per ${iso}, ma i codici sono identici alla baseline`);
   assert(catalogBytes<2*1024*1024,'cataloghi oltre 2 MiB');
   // Il completamento globale dei bordi aggiunge geometria reale alle sagome;
   // il limite resta sotto 40 MiB e le sagome vengono comunque caricate una
@@ -142,6 +163,7 @@ async function verify(data,work,baseline) {
     assert(fs.statSync(path.join(data,'boundaries.pmtiles')).size<60*1024*1024,'PMTiles oltre 60 MiB');
     const report={countries:countries.length,regions:raw.length,zoom:[h.minZoom,h.maxZoom],
       maskBytes,compressedBytes,maxShapeBytes,catalogBytes,absentAtSample:absent,regressions,
+      declaredChanges:cambiDichiarati,
       tilePresence:'one boundary vertex and neighboring tiles per entity at z9; not an exhaustive tile scan'};
     fs.writeFileSync(path.join(work,'verification.json'),JSON.stringify(report,null,2));
     // La pubblicazione ricontrolla gli hash: una modifica dopo i test invalida il manifest.

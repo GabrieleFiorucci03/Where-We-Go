@@ -4,10 +4,10 @@ Appendice generata da `tools/genera_crediti_regioni.js` a partire da
 `tools/livelli_regioni.json`. Le scelte e gli URL sono fissati alle release
 indicate nei metadati: aggiornare la sorgente richiede rigenerare anche questa pagina.
 
-- 198 paesi o territori da geoBoundaries gbOpen;
-- 14 ripieghi da Natural Earth, pubblico dominio;
+- 197 paesi o territori da geoBoundaries gbOpen;
+- 15 ripieghi da Natural Earth, pubblico dominio;
 - 12 senza suddivisioni;
-- 96 delle 198 fonti geoBoundaries sono ODbL o CC BY-SA.
+- 95 delle 197 fonti geoBoundaries sono ODbL o CC BY-SA.
 
 I confini geoBoundaries sono distribuiti attraverso **gbOpen**. Ogni riga
 conserva inoltre la licenza e l’attribuzione della fonte sottostante dichiarata
@@ -127,7 +127,6 @@ livello, correzione della codifica dei nomi, riduzione geometrica e tiling.
 | MAR | Morocco | ADM1 | 2017 | Open Data Commons Open Database License 1.0 — Open Data Commons Open Database License 1.0 | OpenStreetMap, Wambacher | <https://www.openstreetmap.org/copyright> |
 | MDA | Republic of Moldova | ADM1 | 2020 | Creative Commons Attribution 3.0 Intergovernmental Organisations (CC BY 3.0 IGO) | UNHCR, OCHA FISS | <https://data.humdata.org/dataset/moldova-administrative-level-0-1-boundaries> |
 | MDG | Madagascar | ADM1 | 2017 | Open Data Commons Open Database License 1.0 — Open Data Commons Open Database License 1.0 | OpenStreetMap, Wambacher | <https://www.openstreetmap.org/copyright> |
-| MDV | Maldives | ADM1 | 2017 | Open Data Commons Open Database License 1.0 — Open Data Commons Open Database License 1.0 | OpenStreetMap, Wambacher | <https://www.openstreetmap.org/copyright> |
 | MEX | Mexico | ADM1 | 2020 | Creative Commons Attribution 3.0 Intergovernmental Organisations (CC BY 3.0 IGO) | Instituto Nacional de Estadística y Geografía (INEGI) | <https://data.humdata.org/dataset/mexican-administrative-level-0-country-1-estado-and-2-municipio-boundary-polygons> |
 | MHL | Marshall Islands | ADM1 | 2017 | Open Data Commons Open Database License 1.0 — Open Data Commons Open Database License 1.0 | OpenStreetMap, Wambacher | <https://www.openstreetmap.org/copyright> |
 | MKD | North Macedonia | ADM1 | 2016 | Creative Commons Attribution 4.0 International (CC BY 4.0) | EuroGeographics and NTES (Nomenclature of Territorial Units for Statistics - Republic of Macedonia State Statistical Office), Regional IM Working Group - Europe | <https://data.humdata.org/dataset/fyrom-administrative-levels-1-4-from-eurogeographics-and-ntes> |
@@ -221,7 +220,7 @@ livello, correzione della codifica dei nomi, riduzione geometrica e tiling.
 
 Natural Earth dichiara questi dati di pubblico dominio:
 
-`AIA`, `ASM`, `ATF`, `BMU`, `COK`, `IRL`, `MSR`, `NCL`, `PYF`, `SHN`, `SPM`, `TCA`, `VIR`, `WLF`
+`AIA`, `ASM`, `ATF`, `BMU`, `COK`, `IRL`, `MDV`, `MSR`, `NCL`, `PYF`, `SHN`, `SPM`, `TCA`, `VIR`, `WLF`
 
 ## Paesi senza suddivisioni
 

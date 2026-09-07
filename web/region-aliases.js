@@ -118,6 +118,30 @@ export const ALIAS_REGIONI = {
   'MLT.3_1': null,
   'MLT.4_1': null,
   'MLT.5_1': null,
+
+  // Maldive passate da geoBoundaries a Natural Earth: i nomi italiani di NE
+  // portano il prefisso "Atollo", quindi cambia lo slug di venti codici su
+  // ventuno (Male' resta). Addu si chiama Seenu nella nomenclatura di NE.
+  'MDV.addu': 'MDV.atollo-seenu',
+  'MDV.alif-alif': 'MDV.atollo-alif-alif',
+  'MDV.alif-dhaalu': 'MDV.atollo-alif-dhaal',
+  'MDV.baa': 'MDV.atollo-baa',
+  'MDV.dhaalu': 'MDV.atollo-dhaalu',
+  'MDV.faafu': 'MDV.atollo-faafu',
+  'MDV.gaafu-alif': 'MDV.atollo-gaafu-alif',
+  'MDV.gaafu-dhaalu': 'MDV.atollo-gaafu-dhaalu',
+  'MDV.gnaviyani': 'MDV.atollo-gnaviyani',
+  'MDV.haa-alif': 'MDV.atollo-haa-alif',
+  'MDV.haa-dhaalu': 'MDV.atollo-haa-dhaalu',
+  'MDV.kaafu': 'MDV.atollo-kaafu',
+  'MDV.laamu': 'MDV.atollo-laamu',
+  'MDV.lhaviyani': 'MDV.atollo-lhaviyani',
+  'MDV.meemu': 'MDV.atollo-meemu',
+  'MDV.noonu': 'MDV.atollo-noonu',
+  'MDV.raa': 'MDV.atollo-raa',
+  'MDV.shaviyani': 'MDV.atollo-shaviyani',
+  'MDV.thaa': 'MDV.atollo-thaa',
+  'MDV.vaavu': 'MDV.atollo-vaavu',
 };
 
 const PESO = { none: 0, wanted: 1, visited: 2 };

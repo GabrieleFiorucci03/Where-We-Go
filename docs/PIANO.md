@@ -347,7 +347,7 @@ confini, e cambia il comportamento di tutte le maschere.
   non passa da SwiftShader.
 - **Il Nunavut**, con le tre strade qui sopra.
 - **La dipendenza Python della pipeline.** Shapely e pyproj stanno in
-  `data_raw/confini-audit/python`, installati per **Python 3.12**: con un
+  `data_raw/confini-audit/python`, installati per **Python 3.14**: con un
   interprete di versione diversa `import shapely.lib` fallisce. Il file
   `tools/requirements-confini.txt` dice cosa serve, ma l'ambiente va rifatto se
   si cambia interprete, e `pipeline_confini.ps1 -Python` va puntato a quello

@@ -116,6 +116,7 @@ def align(countries, regions, reference, work=None):
     additions = defaultdict(list)
     nation_additions = defaultdict(list)
     records = []
+    gap_residuals = []
     for index, (gap, neighbors) in enumerate(gaps):
         if index and index % 500 == 0:
             print(f'[confini condivisi] Ripartiti {index}/{len(gaps)} vuoti', flush=True)
@@ -134,7 +135,17 @@ def align(countries, regions, reference, work=None):
                     for code, piece in distribute(component, region_geoms[iso]).items():
                         additions[code].append(piece)
         if remaining.area > AREA_EPS:
-            raise ValueError(f'Vuoto senza assegnazione nel riferimento: {index}')
+            # Stessa natura dei residui piu sotto. L'overlay in doppia
+            # precisione lascia briciole lungo il bordo comune, e quanto
+            # grandi dipende da dove comincia l'anello del vuoto: lo stesso
+            # vuoto di 26 m2 fra BWA e ZAF ne lascia 0,00001 m2 con un ordine
+            # dei vertici e 0,42 m2 con un altro. Tollerare solo cio' che sta
+            # entro un millimetro dal riferimento gia assegnato, e registrarlo:
+            # niente viene attribuito a nessuno, il riempimento resta additivo.
+            covered = union_all([reference[iso] for iso in owners]) if owners else None
+            if covered is None or remaining.difference(covered.buffer(EPS)).area > AREA_EPS:
+                raise ValueError(f'Vuoto senza assegnazione nel riferimento: {index}')
+            gap_residuals.append({'id': index, 'area_degrees2': remaining.area})
         records.append({'type': 'Feature', 'properties': {
             'id': index, 'neighbors': neighbors, 'owners': owners,
             'area_km2': area(gap), 'point': list(gap.representative_point().coords)[0],
@@ -189,6 +200,7 @@ def align(countries, regions, reference, work=None):
               'countries': sorted(nation_additions), 'regions': sorted(changed), 'residual': residual}
     report['numerical_tolerance_degrees'] = EPS
     report['numeric_source_residuals'] = numeric_source_residuals
+    report['numeric_gap_residuals'] = gap_residuals
     if work:
         (work / 'shared-border-gaps.geojson').write_text(json.dumps({'type': 'FeatureCollection', 'features': records}), encoding='utf-8')
         (work / 'shared-border-report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')

@@ -76,6 +76,18 @@ const NOMI_LOCALI = {
   'ITA.umbria': 'Umbria',
   'ITA.valle-d-aosta': "Valle d'Aosta",
   'ITA.veneto': 'Veneto',
+
+  // Natural Earth scrive i nomi italiani degli atolli meta' con la
+  // maiuscola e meta' senza, e Malé senza accento.
+  'MDV.atollo-gaafu-dhaalu': 'Atollo Gaafu Dhaalu',
+  'MDV.atollo-gnaviyani': 'Atollo Gnaviyani',
+  'MDV.atollo-haa-dhaalu': 'Atollo Haa Dhaalu',
+  'MDV.atollo-kaafu': 'Atollo Kaafu',
+  'MDV.atollo-laamu': 'Atollo Laamu',
+  'MDV.atollo-raa': 'Atollo Raa',
+  'MDV.atollo-shaviyani': 'Atollo Shaviyani',
+  'MDV.atollo-vaavu': 'Atollo Vaavu',
+  'MDV.male': 'Malé',
 };
 
 function nomeSuddivisione(codice, nomeGrezzo) {
