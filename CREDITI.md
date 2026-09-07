@@ -24,6 +24,25 @@ paese, con anno, licenza e fonte dichiarata, è in
 Le elaborazioni applicate dal progetto sono: scelta del livello, correzione di
 alcuni nomi con codifica guasta, codici sintetici `ISO3.slug`, semplificazione
 delle sagome usate nell'interfaccia e creazione dei tile vettoriali.
+Per tutti i 212 paesi con suddivisioni disponibili, anche
+il contorno nazionale è ricavato dall'unione delle regioni. Questi contorni
+mantengono la provenienza della fonte regionale: l'elenco effettivo viene
+generato in `web/data/canonical-report.json` e il pacchetto dati li separa
+in `confini-nazionali/<ISO3>.geojson`, con attribuzioni per file.
+
+#### I dati derivati sono pubblicati
+
+L'ODbL chiede che chi usa pubblicamente un database derivato lo renda
+disponibile. Il pacchetto sta fra gli asset delle
+[Release del repository](https://github.com/GabrieleFiorucci03/Where-We-Go/releases/latest):
+**un file GeoJSON per paese** — 212 file, 3.343 suddivisioni — ciascuno con
+dentro la propria fonte, la propria licenza, l'URL dell'originale e l'elenco
+delle modifiche, più un `MANIFEST.json` con gli SHA-256. Un file per paese
+significa che nessuna geometria ODbL viene fusa con una CC BY-SA: ogni file
+resta derivato da una sola fonte e ne eredita la licenza.
+
+Lo costruisce `tools/pacchetto_odbl.js`, e va rifatto a ogni rigenerazione dei
+dati. Il metodo, cioè l'intera pipeline, è pubblico in `tools/`.
 
 ### GeoNames — le città
 
@@ -37,7 +56,8 @@ derivati (i tile `cities.pmtiles`, l'indice `citta.db`) deve citare GeoNames.
 
 <https://www.naturalearthdata.com> — **pubblico dominio**
 
-Pubblico dominio. Oltre ai confini nazionali, è usato per i 14 territori elencati
+Pubblico dominio. È la fonte dei confini nazionali di riferimento e dei 37 ripieghi
+senza suddivisioni regionali disponibili. È usato anche per i 14 territori elencati
 nell'appendice delle licenze regionali, nei quali geoBoundaries non offre il
 livello editoriale scelto.
 

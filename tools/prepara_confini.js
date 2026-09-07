@@ -2,7 +2,8 @@
  * Confini -> NDJSON pronto per tippecanoe.
  *
  * Due flussi separati, che diventeranno due livelli dello stesso archivio:
- *   countries.ndjson   stati e territori da Natural Earth
+ *   countries.ndjson   riferimento NE; canonizza_confini.py lo sostituisce
+ *                      con le unioni regionali prima della generazione tile
  *   regions.ndjson     suddivisioni scelte paese per paese (geoBoundaries/NE)
  *
  * Perche' un solo archivio con due livelli e non due archivi: sul telefono
@@ -22,7 +23,10 @@ const ROOT = path.join(__dirname, '..');
 // semplificate pubblicate da geoBoundaries per i tile e ne ricava una copia
 // ancora piu' leggera per le maschere incluse nell'APK.
 const FILE_STATI = path.join(ROOT, 'web', 'data', 'countries.geojson');
-const USCITA = path.join(ROOT, 'data_raw', 'confini');
+// La canonizzazione non deve diventare la propria fonte alla build seguente.
+const RIFERIMENTO_STATI = path.join(ROOT, 'data_raw', 'confini', 'countries_reference.geojson');
+const USCITA = path.resolve(process.env.CONFINI_WORK_DIR || path.join(ROOT, 'data_raw', 'confini'));
+const OUT_DATA = path.resolve(process.env.CONFINI_DATA_DIR || path.join(ROOT, 'web', 'data'));
 
 // scrittura sincrona: i confini sono una quindicina di MB, e con lo stream il
 // file non era ancora su disco quando lo si misurava subito dopo
@@ -40,9 +44,17 @@ function scrivi(file, features) {
 }
 
 fs.mkdirSync(USCITA, { recursive: true });
+fs.mkdirSync(OUT_DATA, { recursive: true });
+if (!fs.existsSync(RIFERIMENTO_STATI)) {
+  fs.mkdirSync(path.dirname(RIFERIMENTO_STATI), { recursive: true });
+  fs.copyFileSync(FILE_STATI, RIFERIMENTO_STATI);
+}
+if (path.join(OUT_DATA, 'countries.geojson') !== FILE_STATI) {
+  fs.copyFileSync(RIFERIMENTO_STATI, path.join(OUT_DATA, 'countries.geojson'));
+}
 
 // --- stati -----------------------------------------------------------------
-const stati = JSON.parse(fs.readFileSync(FILE_STATI, 'utf8')).features;
+const stati = JSON.parse(fs.readFileSync(RIFERIMENTO_STATI, 'utf8')).features;
 const senzaCodice = stati.filter((f) => !f.properties.code).length;
 if (senzaCodice) throw new Error(`${senzaCodice} stati senza 'code': sarebbero immarcabili`);
 const nStati = scrivi(path.join(USCITA, 'countries.ndjson'), stati);

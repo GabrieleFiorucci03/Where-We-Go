@@ -6,11 +6,12 @@
  * i paesi senza suddivisioni. Produce contemporaneamente:
  *
  *   data_raw/confini/regions.ndjson       ingresso di tippecanoe
- *   web/data/regions/<ISO3>.geojson       sagome e indice Android
+ *   web/data/regions/<ISO3>.geojson       catalogo leggero con centri
+ *   web/data/region-shapes/<code>.geojson sagome caricate singolarmente
  *   web/data/regions/index.json           paesi con dettaglio disponibile
  *
- * I due prodotti nascono dalla stessa feature normalizzata, quindi codice,
- * nome e geometria non possono divergere fra tile e schede dell'app.
+ * I due prodotti condividono codici e proprieta'. Le sagome hanno una
+ * tolleranza geometrica esplicita, verificata rispetto all'ingresso dei tile.
  *
  * Uso: node tools/prepara_regioni.js
  */
@@ -25,10 +26,13 @@ const TABELLA = path.join(__dirname, 'livelli_regioni.json');
 const GB = path.join(ROOT, 'data_raw', 'geoboundaries_simplified');
 const NE = path.join(ROOT, 'data_raw', 'regions_10m.geojson');
 const NAZIONI = path.join(ROOT, 'web', 'data', 'countries.geojson');
-const OUT_WEB = path.join(ROOT, 'web', 'data', 'regions');
-const OUT_NDJSON = path.join(ROOT, 'data_raw', 'confini', 'regions.ndjson');
-const SAGOME_GREZZE = path.join(ROOT, 'data_raw', 'confini', 'regions_sagome_raw.geojson');
-const SAGOME = path.join(ROOT, 'data_raw', 'confini', 'regions_sagome.geojson');
+const OUT_DATA = path.resolve(process.env.CONFINI_DATA_DIR || path.join(ROOT, 'web', 'data'));
+const WORK = path.resolve(process.env.CONFINI_WORK_DIR || path.join(ROOT, 'data_raw', 'confini'));
+const OUT_WEB = path.join(OUT_DATA, 'regions');
+const OUT_SHAPES = path.join(OUT_DATA, 'region-shapes');
+const OUT_NDJSON = path.join(WORK, 'regions.ndjson');
+const SAGOME_GREZZE = path.join(WORK, 'regions_sagome_raw.geojson');
+const SAGOME = path.join(WORK, 'regions_sagome.geojson');
 const ZOOM_MINIMO_REGIONI = 3;
 
 /**
@@ -177,11 +181,10 @@ function preparaRegioni() {
   const ne = serveNe ? indiceNaturalEarth() : new Map();
 
   fs.mkdirSync(OUT_WEB, { recursive: true });
+  fs.mkdirSync(OUT_SHAPES, { recursive: true });
   fs.mkdirSync(path.dirname(OUT_NDJSON), { recursive: true });
-  // Solo prodotti generati da questo script; index.json viene riscritto sotto.
-  for (const nome of fs.readdirSync(OUT_WEB)) {
-    if (nome.endsWith('.geojson')) fs.unlinkSync(path.join(OUT_WEB, nome));
-  }
+  // Gli output vengono preparati in staging dalla pipeline; non cancellare
+  // in anticipo le sagome valide se una fonte o la semplificazione falliscono.
   fs.writeFileSync(OUT_NDJSON, '', 'utf8');
 
   let id = 1;
@@ -214,10 +217,10 @@ function preparaRegioni() {
     fs.appendFileSync(OUT_NDJSON, righe + '\n', 'utf8');
   }
 
-  // I tile ricevono la geometria geoBoundaries semplificata senza un secondo
-  // taglio. Le sagome usate per le bandiere, invece, finiscono nell'APK e non
-  // vengono mai mostrate da sole: conserviamo il collaudato 12% a 3 decimali.
-  // Il codice e le proprieta' restano identici; cambia solo il numero di punti.
+  // Errore in Mercatore, quindi proporzionale ai pixel della mappa: 10 metri
+  // valgono circa 0,52 pixel CSS a zoom 12. La percentuale globale eliminava
+  // isole e poteva spostare i bordi di chilometri. Esplodere prima di
+  // keep-shapes protegge ogni componente, non solo la maggiore della regione.
   fs.writeFileSync(SAGOME_GREZZE, JSON.stringify({ type: 'FeatureCollection', features: tutte }), 'utf8');
   const mapshaper = path.join(ROOT, 'node_modules', 'mapshaper', 'bin', 'mapshaper');
   if (!fs.existsSync(mapshaper)) {
@@ -225,15 +228,35 @@ function preparaRegioni() {
   }
   childProcess.execFileSync(process.execPath, [
     mapshaper, SAGOME_GREZZE,
-    '-simplify', '12%', 'keep-shapes',
-    '-o', 'force', 'precision=0.001', SAGOME,
+    '-explode',
+    '-proj', 'webmercator',
+    '-simplify', 'dp', 'interval=10', 'keep-shapes',
+    '-proj', 'wgs84',
+    '-o', 'force', 'precision=0.000001', SAGOME,
   ], { stdio: 'inherit' });
 
-  const idPerCodice = new Map(tutte.map((f) => [f.properties.code, f.id]));
-  const perPaese = new Map();
+  const originali = new Map(tutte.map((f) => [f.properties.code, f]));
+  const ricomposte = new Map();
   for (const f of leggiJson(SAGOME).features || []) {
+    const code = f.properties.code;
+    if (!originali.has(code)) throw new Error(`sagoma con codice sconosciuto: ${code}`);
+    const precedente = ricomposte.get(code);
+    if (precedente) precedente.geometry = unisciGeometrie(precedente.geometry, f.geometry);
+    else ricomposte.set(code, { ...originali.get(code), geometry: f.geometry });
+  }
+  // keep-shapes non protegge i fori. Se la semplificazione perde componenti
+  // o anelli, conservare la geometria sorgente di quella regione.
+  const anelli = g => poligoni(g).reduce((n, p) => n + p.length, 0);
+  let ripieghi = 0;
+  const perPaese = new Map();
+  for (const [code, originale] of originali) {
+    let f = ricomposte.get(code);
+    if (!f || poligoni(f.geometry).length !== poligoni(originale.geometry).length ||
+        anelli(f.geometry) !== anelli(originale.geometry)) {
+      f = originale;
+      ripieghi++;
+    }
     const iso = f.properties.country;
-    f.id = idPerCodice.get(f.properties.code);
     if (!perPaese.has(iso)) perPaese.set(iso, []);
     perPaese.get(iso).push(f);
   }
@@ -242,11 +265,22 @@ function preparaRegioni() {
   let totaleByte = 0;
   for (const [iso, features] of [...perPaese].sort()) {
     features.sort((a, b) => a.properties.code.localeCompare(b.properties.code));
+    const catalogo = features.map(f => {
+      const source = originali.get(f.properties.code);
+      let x0=Infinity, y0=Infinity, x1=-Infinity, y1=-Infinity;
+      for (const p of poligoni(source.geometry)) for (const ring of p) for (const [x,y] of ring) {
+        x0=Math.min(x0,x); y0=Math.min(y0,y); x1=Math.max(x1,x); y1=Math.max(y1,y);
+      }
+      const testo = JSON.stringify(f);
+      fs.writeFileSync(path.join(OUT_SHAPES, `${f.properties.code}.geojson`), testo);
+      totaleByte += Buffer.byteLength(testo);
+      return { ...f, mask: true, geometry: {type:'Point', coordinates:[(x0+x1)/2,(y0+y1)/2]} };
+    });
     const file = path.join(OUT_WEB, `${iso}.geojson`);
-    fs.writeFileSync(file, JSON.stringify({ type: 'FeatureCollection', features }));
+    fs.writeFileSync(file, JSON.stringify({ type: 'FeatureCollection', features: catalogo }));
     const byte = fs.statSync(file).size;
     totaleByte += byte;
-    indice[iso] = { n: features.length, byte };
+    indice[iso] = { n: features.length, byte, maschere: 'singole' };
   }
   fs.writeFileSync(path.join(OUT_WEB, 'index.json'), JSON.stringify(indice), 'utf8');
   fs.unlinkSync(SAGOME_GREZZE);
@@ -254,6 +288,7 @@ function preparaRegioni() {
   console.log(`regioni: ${totale.toLocaleString('it')} in ${Object.keys(indice).length} paesi`);
   console.log(`feature omonime fuse: ${fuse}`);
   console.log(`sagome web: ${(totaleByte / 1048576).toFixed(1)} MB`);
+  console.log(`sagome con geometria sorgente per conservare componenti/anelli: ${ripieghi}`);
   console.log(`regions.ndjson: ${ndjsonMb.toFixed(1)} MB, minzoom ${ZOOM_MINIMO_REGIONI}`);
   console.log(`Italia: ${indice.ITA ? indice.ITA.n + ' regioni' : 'assente'}`);
   return { totale, paesi: Object.keys(indice).length, fuse };

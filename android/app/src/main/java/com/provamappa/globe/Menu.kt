@@ -44,6 +44,7 @@ fun Menu(
     onEsportaImmagine: () -> Unit,
     onSalvaBackup: () -> Unit,
     onRipristina: () -> Unit,
+    onInformazioni: () -> Unit,
     onChiudi: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -99,6 +100,12 @@ fun Menu(
                 supportingContent = { Text("Sostituisce tutto ciò che hai segnato") },
                 leadingContent = { Icon(Icons.Filled.Restore, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onRipristina),
+            )
+            ListItem(
+                headlineContent = { Text("Informazioni e licenze") },
+                supportingContent = { Text("Fonti, attribuzioni e privacy") },
+                leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) },
+                modifier = Modifier.clickable(onClick = onInformazioni),
             )
         }
     }

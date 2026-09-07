@@ -1177,15 +1177,51 @@ function setStatus(kind, code, status, opzioni = {}) {
  *
  * I tile **non** servono a questo: sono ritagliati per tessera, quindi la
  * geometria che portano e' spezzata e inutilizzabile per una maschera — lo
- * annotava gia' §7.1 del piano. Si usa il GeoJSON a bassa risoluzione: gli
- * stati sono in memoria dall'avvio (1,6 MB), le regioni si caricano per paese
- * la prima volta che ne serve una, ottanta KB alla volta.
+ * annotava gia' §7.1 del piano. I cataloghi sono riferimenti leggeri;
+ * la sagoma precisa si carica per singola entita', con cache limitata. I
+ * vecchi pacchetti con geometrie nel catalogo restano leggibili.
  */
+const cacheSagome = new Map();
+const richiesteSagome = new Map();
+let byteSagome = 0;
+const MAX_BYTE_SAGOME = 8 * 1024 * 1024; // byte JSON, non stima della heap JS
 async function sagoma(kind, code) {
-  if (kind === 'countries') return byCode.countries.get(code) || null;
-  const paese = paeseDiRegione(code);
-  if (!regioniCaricate.has(paese)) await caricaRegioni(paese);
-  return byCode.regions.get(code) || null;
+  if (kind === 'regions') {
+    const paese = paeseDiRegione(code);
+    if (!regioniCaricate.has(paese)) await caricaRegioni(paese);
+  }
+  const voce = byCode[kind].get(code);
+  if (!voce?.mask) return voce || null;
+  if (cacheSagome.has(code)) {
+    const v = cacheSagome.get(code);
+    cacheSagome.delete(code); cacheSagome.set(code, v);
+    return v.feature;
+  }
+  if (richiesteSagome.has(code)) return richiesteSagome.get(code);
+  const richiesta = (async () => {
+    const cartella = kind === 'countries' ? 'country-shapes' : 'region-shapes';
+    const res = await fetch(`data/${cartella}/${encodeURIComponent(code)}.geojson`);
+    if (!res.ok) throw new Error(`sagoma ${code}: HTTP ${res.status}`);
+    const testo = await res.text();
+    const feature = JSON.parse(testo);
+    if (feature.properties?.code !== code || !['Polygon','MultiPolygon'].includes(feature.geometry?.type)) {
+      throw new Error(`sagoma ${code}: geometria o codice non valido`);
+    }
+    const bytes = new TextEncoder().encode(testo).length;
+    // Una singola geometria oltre budget si usa e si rilascia, senza cache.
+    if (bytes <= MAX_BYTE_SAGOME) {
+      while (cacheSagome.size && byteSagome + bytes > MAX_BYTE_SAGOME) {
+        const primo = cacheSagome.keys().next().value;
+        byteSagome -= cacheSagome.get(primo).bytes;
+        cacheSagome.delete(primo);
+      }
+      cacheSagome.set(code, {feature, bytes}); byteSagome += bytes;
+    }
+    return feature;
+  })();
+  richiesteSagome.set(code, richiesta);
+  try { return await richiesta; }
+  finally { richiesteSagome.delete(code); }
 }
 
 async function aggiungiBandiera(kind, code) {
@@ -1364,9 +1400,8 @@ function cycle(status) {
 // ---------------------------------------------------------------------------
 
 /**
- * Carica le sagome delle regioni di un paese. **Non** serve a disegnarle — a
- * quello pensano i tile — ma solo a fornire la geometria alle maschere delle
- * bandiere, che dai tile non si puo' ricavare (§7.1).
+ * Carica il catalogo leggero delle regioni. Le sagome precise vengono lette
+ * singolarmente da sagoma(); i tile continuano a disegnare i confini.
  */
 async function caricaRegioni(code) {
   if (regioniCaricate.has(code)) return regioniCaricate.get(code);
@@ -1759,8 +1794,8 @@ async function main() {
   const sorgenteConfini = await preparaSorgenteConfini();
 
   // countries.geojson non serve piu' a disegnare — a quello pensano i tile —
-  // ma resta l'archivio delle sagome per le maschere delle bandiere, che dai
-  // tile non si possono ricavare (§7.1). Sono 1,6 MB, si caricano una volta.
+  // ma conserva i metadati e il riferimento alle sagome nazionali caricate
+  // singolarmente da country-shapes (§7.1). Il catalogo pesa circa 1,6 MB.
   const [countries, places, indice, colori] = await Promise.all([
     loadGeoJSON('data/countries.geojson'),
     // il GeoJSON dei capoluoghi si carica solo se non ci sono i tile
@@ -2176,8 +2211,8 @@ async function main() {
   // Uso:  await diag('ITA')
   window.diag = async function diag(code = 'ITA') {
     const out = { code };
-    const feature = byCode.countries.get(code) || byCode.regions.get(code);
     const kind = byCode.countries.has(code) ? 'countries' : 'regions';
+    const feature = await sagoma(kind, code);
     if (!feature) {
       const esempi = [...byCode.countries.keys()].slice(0, 8);
       console.error(`codice "${code}" non trovato. Esempi validi:`, esempi);

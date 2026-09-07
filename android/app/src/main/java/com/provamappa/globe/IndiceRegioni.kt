@@ -6,8 +6,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Le suddivisioni amministrative, lette dagli stessi GeoJSON che alimentano le
- * maschere delle bandiere: `assets/data/regions/<ISO3>.geojson`.
+ * Cataloghi delle suddivisioni: `assets/data/regions/<ISO3>.geojson`.
+ * Contengono nomi, codici e centri Point; le sagome precise delle bandiere
+ * stanno in file separati e non vengono analizzate per aprire un elenco.
  *
  * **Perche' non stanno in `citta.db`.** L'indice SQLite ha due tabelle, nazioni
  * e citta', e le regioni non ci sono mai entrate: la pipeline che lo costruisce
@@ -15,10 +16,9 @@ import org.json.JSONObject
  * vorrebbe dire rigenerare un file da 57 MB per una manciata di nomi che
  * nell'APK ci sono gia', in chiaro, un file per nazione.
  *
- * Il prezzo e' che qui si parla di JSON e non di SQL, quindi **le chiamate vanno
- * fatte fuori dal thread principale**: il file piu' grosso e' la Russia con 843
- * KB, e analizzarlo mentre si scorre una lista si vedrebbe. La cache tiene il
- * risultato per nazione, cosi' si paga una volta sola.
+ * Le chiamate restano fuori dal thread principale e la cache tiene il
+ * risultato per nazione. centro() legge anche i vecchi cataloghi poligonali,
+ * mantenendo la compatibilita' con il precedente formato dei dati.
  */
 class IndiceRegioni(context: Context) {
 

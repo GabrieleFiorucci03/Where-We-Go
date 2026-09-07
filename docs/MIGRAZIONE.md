@@ -3,6 +3,58 @@
 Stato del lavoro sul ramo `migrazione-geoboundaries`. Il ramo `main` è fermo al
 tag `v1.2-stabile`, che è il punto a cui tornare se qualcosa si rompe.
 
+## Cose da fare prima dello store
+
+La migrazione dati è chiusa, ma la pubblicazione richiede ancora il passaggio
+release/licenze descritto nella roadmap. L'elenco completo dei requisiti degli
+store — account e test chiuso, firma, build di release, peso dell'AAB, licenze,
+dichiarazioni e materiali della scheda — sta in **§14 di `docs/PIANO.md`**, con la
+lista da spuntare in **[`docs/PUBBLICAZIONE.md`](PUBBLICAZIONE.md)**; qui
+resta il promemoria di quello che tocca la migrazione:
+
+- [~] ricompilare e collaudare la schermata «Informazioni e licenze»: fatto
+      sull'emulatore il 2026-09-06 (`tools/collaudo_apk.cjs`), resta il telefono vero;
+- [ ] produrre una release firmata e un AAB con keystore personale;
+- [ ] portare `targetSdk` ad API 36;
+- [~] obblighi ODbL: pacchetto dei dati derivati pronto (`tools/pacchetto_odbl.js`), resta da
+      creare la Release del repository e allegarcelo;
+- [ ] includere/verificare gli avvisi Apache 2.0 delle dipendenze Android;
+- [ ] aggiungere privacy policy pubblica e dichiarazione Data safety;
+- [ ] rifinire il controllo per-file delle foto Commons;
+- [x] allineamento dei confini: fatto il 2026-09-06, vedi la nota qui sotto e la
+      sezione «Allineamento dei confini» di `docs/PIANO.md`.
+
+### Nota sul mismatch dei confini — risolto in parte, il 2026-09-06
+
+**Aggiornamento 2026-09-07:** il caso misto (regioni accese solo da un lato)
+richiede la stessa sagoma in entrambe le modalita. Ora tutti i 212 paesi con
+regioni usano la loro unione anche per il contorno nazionale e la bandiera;
+i 37 senza regioni restano su Natural Earth. Le divergenze della fonte
+regionale sono riportate nel rapporto, senza ritagliare i territori contesi.
+Vedi «Correzione dei confini misti» in `PIANO.md`. Le misure sotto si
+riferiscono alla correzione parziale precedente.
+
+L'ipotesi era che il difetto stesse nella topologia: geometrie da Natural
+Earth, da geoBoundaries e maschere semplificate separatamente, da riconciliare
+in una topologia canonica da cui derivare tutto.
+
+Misurando si è visto che **la causa principale erano le maschere delle
+bandiere**: il `-simplify 12%` non spostava il contorno di qualche metro, gli
+cancellava componenti insulari intere — in Italia 3.824 km² di differenza e uno
+scostamento di 3.771 px a zoom 12, cioè la Sicilia mancante. Rifatte con una
+tolleranza in metri, lo scarto scende a 0,38 km² e mezzo pixel.
+
+Il contorno nazionale dall'unione delle regioni funziona, ma solo dove si può
+dimostrare che non invade il vicino: **10 paesi su 249, tutti insulari**
+(Giappone, Madagascar, Cuba, Sri Lanka, Porto Rico, Giamaica, Trinidad e
+Tobago, Samoa, Mauritius, Dominica). Gli altri 239 restano su Natural Earth con
+il motivo registrato. Le fonti di India, Pakistan e Cina si sovrappongono per
+quasi 190.000 km² perché dichiarano cose diverse: nessuna operazione geometrica
+lo risolve senza scegliere in silenzio a chi dare il Kashmir.
+
+Nessun overdraw. Il prezzo è nell'APK: le sagome passano da 9,8 MB a ~30 MB
+compressi, un file per regione caricato su richiesta.
+
 ## Perché
 
 GADM vieta la ridistribuzione: è il motivo per cui `web/data/` e `data_raw/`

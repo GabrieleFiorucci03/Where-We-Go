@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
                 var menuAperto by remember { mutableStateOf(false) }
                 var elenchiAperti by remember { mutableStateOf(false) }
                 var statisticheAperte by remember { mutableStateOf(false) }
+                var informazioniAperte by remember { mutableStateOf(false) }
                 // Quale elenco del marcato e' aperto, con la sua porta: una riga
                 // delle statistiche.
                 var marcati by remember { mutableStateOf<Pair<Stato, String>?>(null) }
@@ -272,7 +273,18 @@ class MainActivity : ComponentActivity() {
                                 menuAperto = false
                                 apri.launch(arrayOf("application/json", "text/plain", "*/*"))
                             },
+                            onInformazioni = {
+                                menuAperto = false
+                                informazioniAperte = true
+                            },
                             onChiudi = { menuAperto = false },
+                        )
+                    }
+
+                    if (informazioniAperte) {
+                        SchermataInformazioni(
+                            onApriUrl = { url -> apriPagina(contesto, url) },
+                            onChiudi = { informazioniAperte = false },
                         )
                     }
 

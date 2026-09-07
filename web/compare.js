@@ -51,8 +51,14 @@ async function disegna() {
 
   let generate = 0;
   for (const code of PAESI) {
-    const feature = features.get(code);
+    let feature = features.get(code);
     if (!feature) continue;
+    if (feature.mask) {
+      const res = await fetch(`data/country-shapes/${encodeURIComponent(code)}.geojson`);
+      if (!res.ok) throw new Error(`Sagoma ${code}: HTTP ${res.status}`);
+      feature = await res.json();
+      features.set(code, feature);
+    }
 
     const polys = polygonsOf(feature.geometry);
     const clusters = clusterPolygons(polys);

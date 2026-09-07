@@ -12,6 +12,301 @@ Ispirazione: *Countries Been*, con l'aggiunta del riempimento a bandiera.
 > Le sezioni che misurano GADM restano come cronologia della scelta originaria,
 > non come descrizione della pipeline corrente.
 
+## Da fare prima della pubblicazione
+
+### Correzione dei confini misti — 2026-09-07
+
+Il controllo precedente sui contorni nazionali (fase 3 sotto) manteneva due
+fonti diverse per 202 paesi con regioni: accendendo il dettaglio da un solo
+lato del confine apparivano strisce vuote. La pipeline ora deriva **tutti i
+212 contorni nazionali disponibili dall'unione delle rispettive regioni**.
+Natural Earth resta il ripiego per i 37 paesi senza suddivisioni. Il cambio
+di modalita conserva quindi la stessa superficie; nessuna regione viene
+ritagliata o attribuita a un altro paese.
+
+Le divergenze territoriali e le componenti del riferimento Natural Earth
+non coperte dalla fonte regionale restano documentate in `canonical-report.json`.
+Non sono piu un motivo per reintrodurre un secondo contorno: cio significa
+che anche la vista nazionale adotta ora la copertura della fonte regionale,
+incluse le sue omissioni e le sovrapposizioni nei territori contesi.
+
+Anche le bandiere nazionali usano questa unione, caricata su richiesta da
+`country-shapes/<ISO3>.geojson` nella cache da 8 MiB condivisa con le regioni.
+Il catalogo iniziale conserva le geometrie leggere di riferimento solo per
+gli strumenti che leggono i metadati; queste non disegnano la mappa.
+`audit_confini.py` controlla l'identita geometrica per ogni paese;
+`test_confini_misti.cjs` confronta la copertura renderizzata nelle quattro
+combinazioni acceso/spento, alla soglia e fino a zoom 12.
+
+Le misure e i criteri della fase 3 sotto descrivono la versione precedente.
+
+Collaudo della build `data_raw/confini-audit/mixed-20260907`: **212 identita
+geometriche verificate, zero differenze**; tutti i 249 codici nazionali e
+3.343 regionali presenti nel campione di tile z9. Il confronto browser
+esegue 112 combinazioni su quattro inquadrature delle Alpi e della costa
+italo-francese, a sette zoom da 4,24 a 12: la versione precedente fallisce
+68 prove, quella nuova le supera tutte (massimo 5 pixel isolati diversi,
+nessuna differenza da zoom 8 in su). Superati inoltre 24 inquadrature con
+lo stile normale, selezione alla soglia, caricamento sagome e backup.
+Rapporti in `mixed-before/`, `mixed-after/` e nella cartella `work/` della
+build; archivio dei confini 42,1 MiB.
+APK debug compilato offline: 209.480.938 byte (199,8 MiB). Verificati gli
+hash di tutti i 3.808 asset dati rispetto al manifest collaudato, il codice
+web incorporato e `boundaries.pmtiles` non compresso. Il nuovo APK e in
+`dist/WhereWeGo-confini-misti.apk`; il collaudo del rendering e in browser,
+resta da provarlo sul telefono.
+
+> **L'elenco completo dei requisiti degli store — account, firma, build di release, licenze,
+> dichiarazioni, materiali della scheda — è in §14, e in forma di lista da spuntare in
+> [`docs/PUBBLICAZIONE.md`](PUBBLICAZIONE.md).** Qui restano le cose che riguardano l'app in sé,
+> indipendenti dal canale con cui viene distribuita.
+
+- [x] Ricompilare e verificare l'APK dopo l'aggiunta di «Informazioni e licenze».
+      Fatto il 2026-09-06: schermata aperta dal menu, collegamenti presenti,
+      ritorno indietro corretto.
+- [~] Eseguire il collaudo finale su un telefono reale: mappa offline, ricerca,
+      regioni e migrazione del backup. **Fatto sull'emulatore** con
+      `tools/collaudo_apk.cjs` (nessun errore, backup superato); resta il
+      telefono vero, dove vanno rimisurati i 7,6 s del Nunavut.
+- [ ] Aggiungere una build `release` firmata con un keystore personale e
+      pubblicare un Android App Bundle (AAB), senza mettere il keystore in git (§14.2, §14.3).
+- [ ] Aggiornare `compileSdk`/`targetSdk` ad Android 16 (API 36), richiesto da
+      Google Play per nuove app e aggiornamenti dal 31 agosto 2026 (§14.3).
+- [ ] Pubblicare a un URL HTTPS stabile l'archivio dati derivato o il metodo/diff
+      macchina-legibile richiesto da ODbL e collegarlo dalla schermata licenze.
+      **È il vincolo che decide se si può pubblicare**, vedi §14.5.
+- [ ] Verificare che l'APK distribuito contenga gli avvisi completi delle
+      dipendenze Android (Apache 2.0 e licenze degli artefatti).
+- [ ] Pubblicare una privacy policy accessibile dall'app e dalla Play Console e
+      completare la sezione Data safety (§14.5, §14.6).
+- [ ] Controllare le attribuzioni delle singole foto Wikimedia Commons quando la
+      galleria viene usata: autore, licenza e collegamento alla pagina originale.
+- [ ] Decidere che limite dare alla galleria di Commons: pubblicando, i contenuti
+      di terzi non curati diventano un problema di classificazione (§14.6).
+- [x] Allineamento dei confini: misurato, corretto e verificato il 2026-09-06.
+      Le maschere delle bandiere erano la causa principale ed erano riparabili;
+      i disaccordi fra le fonti no. Restano il collaudo su telefono e la
+      rimisura del peso (§14.4). Vedi la sezione qui sotto.
+
+### Allineamento dei confini — eseguito il 2026-09-06
+
+Il problema non dipendeva da un solo file: convivevano i confini Natural Earth
+dei paesi, i confini geoBoundaries delle regioni, la semplificazione di
+Tippecanoe nei PMTiles e le geometrie ancora più leggere usate dalle maschere
+delle bandiere. La strategia adottata — **misurare, provare su un campione,
+verificare, estendere** — serviva proprio a non attribuire ogni fessura alla
+topologia dei dati prima di aver guardato.
+
+Ha avuto ragione: **la causa principale non erano i confini, erano le
+maschere.** Le tre cause si sono rivelate di peso molto diverso, e solo una si
+poteva sanare senza prendere posizione su questioni territoriali.
+
+Gli artefatti della misura stanno in `data_raw/confini-audit/` (baseline,
+candidate, final, e le catture PNG dei tre passaggi); la pipeline rifà tutto da
+capo in staging (§«Come si rifà»).
+
+#### Fase 1 — Cosa ha detto la misura
+
+Campione: Italia, Austria e Svizzera per i confini alpini; coste e isole
+italiane; Filippine per l'arcipelago; Francia per l'oltremare; India, Pakistan e
+Cina per un confine conteso. Aree e distanze misurate in proiezione metrica, non
+in gradi; scostamenti convertiti in pixel a zoom 12.
+
+| Causa | Misura sul campione | Verdetto |
+|---|---|---|
+| Maschere delle bandiere | Italia **3.824,7 km²** di differenza dalla sorgente, con scostamento massimo **3.771 px** a zoom 12 (Sicilia) | Difetto vero e riparabile |
+| Divergenza fra i dataset | Italia: 3.354,7 km² di Stato fuori dalle sue regioni, 4.013,8 km² di regioni fuori dallo Stato | Reale, ma è disaccordo fra fonti |
+| Sovrapposizioni fra Stati nelle fonti | ITA/CHE 11,2 km², ITA/AUT 2,4 km², AUT/CHE 1,1 km² — ma IND/PAK **81.608 km²** e IND/CHN **106.857 km²** | Non è geometria: sono rivendicazioni |
+
+Il `-simplify 12% keep-shapes` delle sagome non spostava soltanto il contorno:
+**cancellava componenti insulari intere.** Uno scostamento di 3.771 px non è una
+fessura, è la Sicilia che non c'è. Ed è questo che si vedeva sullo schermo:
+non un bordo disallineato di un pixel, ma la bandiera che sborda o non copre.
+
+La misura ha anche trovato **6 geometrie sorgenti non valide** (`IRL.cork`,
+`IRL.galway`, `IRL.limerick`, `IRL.tipperary`, `IRL.waterford`,
+`IRN.mazandaran`): erano già così nei dati precedenti.
+
+#### Fase 2 — Le maschere, rifatte
+
+- Semplificazione con **errore massimo in metri** invece della percentuale, e
+  ogni componente conservata. Sul campione lo scostamento resta **entro mezzo
+  pixel a zoom 12**: Italia da 3.824,7 a **0,38 km²** e da 3.771 a **0,50 px**,
+  Austria 0,12 km², Svizzera 0,14 km².
+- Le 6 sorgenti non valide vengono **riparate** in pipeline
+  (`tools/verifica_sagome.py --repair`), non aggirate.
+- 5 sagome che la semplificazione rendeva comunque non valide — `CAN.nunavut`,
+  `CAN.ontario`, `MDG.menabe`, `NOR.more-og-romsdal`, `SDN.red-sea` — usano la
+  **geometria sorgente**, senza semplificazione. Meglio pesanti che rotte.
+- Nei tile, `--no-simplification-of-shared-nodes` insieme a
+  `--simplification-at-maximum-zoom=1` e `--full-detail=13`: due poligoni
+  adiacenti non vengono più semplificati ciascuno per conto proprio.
+
+#### Fase 3 — I contorni nazionali, solo dove si poteva dimostrare
+
+`tools/canonizza_confini.py` prova per ogni paese l'unione delle sue regioni al
+posto del contorno Natural Earth, e la **adotta soltanto se supera tutti** i
+controlli: copertura del riferimento ≥ 95 %, variazione d'area ≤ 10 %, nessun
+punto interno del vecchio contorno scoperto (è il controllo che protegge isole
+ed enclavi), e **nessuna nuova sovrapposizione con un paese vicino** oltre
+0,01 km². Nessuno snapping internazionale implicito: se il candidato si mangia
+un pezzo del vicino, viene scartato e il motivo finisce nel rapporto.
+
+Su 249 paesi ne sono passati **10** — e sono tutti isole o stati insulari, cioè
+esattamente i casi in cui non c'è un vicino con cui litigare:
+
+| Paese | Differenza Stato/regioni prima | Dopo |
+|---|---|---|
+| Giappone | 19.664 km² | 0 |
+| Madagascar | 10.834 km² | 0 |
+| Cuba | 7.136 km² | 0 |
+| Sri Lanka | 2.128 km² | 0 |
+| Porto Rico, Giamaica, Trinidad e Tobago, Samoa, Mauritius, Dominica | da 112 a 603 km² | 0 |
+
+Gli altri **239 restano su Natural Earth**, con il motivo registrato in
+`canonical-report.json`: 102 perché l'unione invadeva un vicino, 100 per
+copertura insufficiente, 37 perché non hanno regioni.
+
+**Questa è la parte onesta del risultato.** Far combaciare due bordi non li
+rende più precisi, e l'India è il caso che lo dimostra: le fonti di India,
+Pakistan e Cina si sovrappongono per quasi 190.000 km² perché *dichiarano cose
+diverse*. Nessuna semplificazione, nessun dissolve e nessun overdraw sistemano
+quello, e provarci significherebbe scegliere in silenzio a chi dare il Kashmir.
+Resta com'è, e §14.6 dice che va detto nella schermata delle licenze.
+
+#### Fase 4 — Verifica
+
+- **Presenza:** 249 paesi e 3.343 regioni ritrovati nei tile a zoom 9 nei punti
+  campionati, nessuna regressione rispetto alla baseline. È un campione — un
+  vertice di confine e le tessere vicine per entità — non una scansione
+  esaustiva di tutti i tile.
+- **Rendering reale:** 64 catture con MapLibre in browser headless su 8
+  inquadrature (Alpi, costa, isole, Filippine, oltremare, Kashmir, Giappone,
+  Cuba) a zoom 4 / 4,24 / 4,26 / 6 / 8 / 9 / 10 / 12, con regioni e bandiere
+  accese. Zero errori di pagina, zero errori della mappa, giro completo del
+  backup superato e soglia di tocco a 4,25 confermata.
+- **Messa in linea coordinata:** `tools/pubblica_confini.js` ricontrolla gli
+  SHA-256 del manifest verificato prima di copiare, e conserva il pacchetto
+  precedente in `previous/` per il ripristino. I dati in linea non vengono
+  toccati se un controllo fallisce.
+- **Sull'APK vero** (`tools/collaudo_apk.cjs`, emulatore API 35): l'app parte,
+  legge i tile dal ponte Kotlin, carica 249 stati e 212 paesi con regioni,
+  mappa pronta in 3,0 s. Sei inquadrature fotografate dallo schermo, marcature
+  e giro del backup superati, **nessun errore JS e nessuna maschera nulla**.
+  Le sagome arrivano davvero dagli asset dell'APK: 44 KB letti in 10 ms per la
+  Toscana, maschera completa in 49 ms.
+
+Le due catture che contano:
+
+- **`seam-toscana-umbria-z9`**: i due riempimenti si toccano esattamente lungo
+  un bordo frastagliato, senza fessura e senza sovrapposizione. È il caso per
+  cui il lavoro è stato fatto, allo zoom per cui i dati sono pensati.
+- **`seam-brennero-z12`**: qui il difetto residuo si vede, e non è quello che
+  ci si aspettava. La maschera regionale è precisa a mezzo pixel, ma **la linea
+  di confine disegnata sopra è dato di zoom 9 ingrandito**, quindi più grossa
+  della maschera; e il riempimento austriaco viene da Natural Earth, che con
+  geoBoundaries non concorda. A zoom 10–12 lo scarto che resta è della linea,
+  non più della maschera. Chiuderlo vorrebbe dire alzare il massimo zoom
+  dell'archivio, che è un intervento distinto e qui fuori portata.
+
+#### Il prezzo
+
+| Prodotto | Prima | Dopo |
+|---|---|---|
+| Sagome delle bandiere | 9,8 MB nei cataloghi | 89,2 MB in 3.343 file, **~29,9 MB compressi nell'APK** |
+| Cataloghi delle regioni | (contenevano le geometrie) | 0,8 MB: nomi, codici e centri |
+| `boundaries.pmtiles` | 42,7 MB | 44,8 MB |
+| `countries.geojson` | 1,69 MB | 3,95 MB |
+
+Le sagome non stanno più dentro il catalogo del paese: **una regione, un file**,
+caricato solo quando serve davvero una maschera, con una cache LRU da 8 MB. La
+sagoma più grossa è 12,5 MB e sopra il budget si usa e si rilascia senza
+occupare la cache. Aprire l'elenco delle regioni di un paese non legge più
+nessuna geometria — è il motivo per cui `IndiceRegioni` non fa più il parsing
+dei poligoni per mostrare dei nomi.
+
+**L'APK di debug passa da 150,6 a 179,3 MB** (+28,7 MB, misurato il
+2026-09-06). È la voce da rimisurare in §14.4 quando si genera l'AAB: il
+margine sotto il tetto del modulo base si assottiglia parecchio.
+
+#### Vincoli preservati — verificati, non assunti
+
+| Aspetto | Valore | Verifica |
+|---|---|---|
+| Zoom navigabile della mappa | 0,5–12 | letto dalla mappa in ogni cattura |
+| Livelli generati nell'archivio confini | 0–9 | intestazione del PMTiles, la pipeline rifiuta altri valori |
+| Regioni disponibili nei tile | da zoom 3 | verifica dei tile |
+| Regioni visibili e selezionabili | da zoom 4,25 | catture a 4,24 e 4,26 |
+| Città e loro etichette | 4–5 e da 7 | invariati, non toccati dal lavoro |
+| Codici, marcature, backup | invariati | giro completo del backup nel test |
+
+A zoom 10–12 la mappa ingrandisce i tile di zoom 9: il limite dell'archivio non
+limita la navigazione. Aumentare il dettaglio oltre zoom 9 resta un intervento
+distinto, non fatto qui.
+
+#### Come si rifà
+
+```
+powershell -File tools/pipeline_confini.ps1 -Python python
+node tools/pubblica_confini.js data_raw/confini-audit/<build>
+```
+
+La pipeline produce **in staging** dentro `data_raw/confini-audit/`, non in
+linea, e si ferma se validità, verifica o audit non passano. La copia di
+riferimento delle sagome nazionali sta in
+`data_raw/confini/countries_reference.geojson`: serve a evitare che la
+canonizzazione diventi la propria fonte alla build successiva, cioè che il
+contorno del Giappone venga rifuso ogni volta a partire da sé stesso.
+
+#### Il caso Nunavut — l'unico prezzo misurato
+
+Marcare il Nunavut blocca la mappa per **7,6 secondi** sull'emulatore. Non è il
+formato a un file per regione: leggere i 12 MB dagli asset costa 154 ms e
+analizzarli 181 ms. Il resto è la rasterizzazione della maschera.
+
+Il motivo è che il Nunavut **è** 18.833 isole, con 319.451 vertici, e adesso ci
+sono tutte. La vecchia maschera ne aveva 449: la semplificazione al 12 % aveva
+buttato via il 97,6 % delle isole. Quindi non è una regressione gratuita, è il
+conto della correzione — ma è un conto vero, e va pagato o negoziato.
+
+È un caso isolato: la sagoma mediana pesa 8,2 KB, solo 8 file su 3.343 superano
+1 MB, e il secondo per numero di poligoni (Ontario, 4.427) rende in 497 ms. Il
+costo cresce però più che linearmente con i poligoni, quindi il Nunavut non è
+semplicemente «quattro volte l'Ontario».
+
+Le strade, in ordine di quanto costano:
+
+1. **Scartare nel disegno i poligoni sotto il pixel della canvas.** La maschera
+   si rasterizza su una canvas di lato 512: un'isola più piccola di un pixel di
+   quella canvas non può produrre nulla di visibile, per costruzione. Si tocca
+   `web/flagmask.js`, non i dati, che restano completi su disco. Va misurato su
+   un campione prima di adottarlo, con la stessa disciplina usata qui.
+2. **Rasterizzare fuori dal thread della pagina** (OffscreenCanvas in un
+   worker): non riduce il costo, ma smette di bloccare la mappa.
+3. **Lasciarlo così.** Riguarda una regione su 3.343, e chi marca il Nunavut lo
+   fa una volta.
+
+Non è stato deciso qui perché è una scelta di resa visiva del §7, non di
+confini, e cambia il comportamento di tutte le maschere.
+
+#### Cosa resta aperto
+
+- **Le divergenze fra dataset** (Stato Natural Earth contro unione delle sue
+  regioni geoBoundaries) restano per i 239 paesi non canonizzati. Sono
+  disaccordo fra fonti, non un difetto di build.
+- **I confini contesi** restano come li dichiarano le fonti. Vedi §14.6.
+- **Il collaudo su telefono reale.** Fatto sull'emulatore, non ancora su un
+  dispositivo vero: i 7,6 s del Nunavut e la fluidità con le sagome caricate
+  una alla volta vanno rimisurati sul telefono di riferimento, dove la canvas
+  non passa da SwiftShader.
+- **Il Nunavut**, con le tre strade qui sopra.
+- **La dipendenza Python della pipeline.** Shapely e pyproj stanno in
+  `data_raw/confini-audit/python`, installati per **Python 3.12**: con un
+  interprete di versione diversa `import shapely.lib` fallisce. Il file
+  `tools/requirements-confini.txt` dice cosa serve, ma l'ambiente va rifatto se
+  si cambia interprete, e `pipeline_confini.ps1 -Python` va puntato a quello
+  giusto.
+
 ---
 
 ## 0. Decisioni prese
@@ -26,8 +321,8 @@ Ispirazione: *Countries Been*, con l'aggiunta del riempimento a bandiera.
 | Tema | **Chiaro di default**, scuro selezionabile nelle impostazioni. Vedi §6.1 |
 | Suddivisioni | **Ci si ferma alle regioni**; livello geoBoundaries scelto paese per paese. Niente province né comuni: vedi §13 e `docs/MIGRAZIONE.md` |
 | Approfondimento | Città → galleria di foto da Wikimedia Commons dentro l'app; nazioni e regioni → Chrome Custom Tab. Vedi §9.6 |
-| Distribuzione | **Nessuna.** App a uso personale: APK compilato in locale e installato a mano sul proprio telefono. Vedi §4 |
-| Costi | **Zero assoluto**, nessun account sviluppatore, nessuna fee |
+| Distribuzione | **Store, dopo il passaggio di §14.** Fin qui è stata nessuna — APK compilato in locale e installato a mano (§4, che resta come cronologia); la pubblicazione aggiunge i requisiti elencati in §14 |
+| Costi | **Zero per dati e strumenti.** La pubblicazione su Google Play costa **25 $ una tantum** (§14); nessun costo ricorrente |
 
 ---
 
@@ -422,6 +717,10 @@ vanno in git, solo lo script e i checksum.
 ---
 
 ## 4. Installazione (app personale, nessuna distribuzione)
+
+> **Aggiornamento 2026-09-06:** questa sezione descrive come l'app arriva sul telefono *durante lo
+> sviluppo*, e in quel ruolo vale ancora. Non è più il punto d'arrivo: la distribuzione sugli store
+> è ora una decisione presa, con requisiti e ordine dei passi in §14.
 
 ### 4.1 Come arriva l'app sul telefono
 
@@ -1375,6 +1674,7 @@ sono due errori che si rifanno facilmente:
 | **M5 — Città** ✅ | Puntini, caricamento dei PMTiles presenti nella cartella | **Fatto.** 440.273 città nei tile, marcabili dalla mappa e dagli elenchi, con etichette dei nomi da zoom 7 e comparsa ritardata attorno alle metropoli (§2.4) |
 | **M6 — UX** ✅ | Ricerca, statistiche, export PNG, backup/restore, Custom Tab | **Fatto.** Ricerca (§9.4); statistiche su 195 stati sovrani; backup e ripristino in JSON con il selettore di sistema, e il ripristino dice quante voci sono entrate; export del globo in PNG (richiede `preserveDrawingBuffer` alla costruzione della mappa); «Guarda com'è» ora è una **galleria di Commons dentro l'app** per le città, Custom Tab per nazioni e regioni (§9.6). **Tutto confermato su dispositivo reale il 2026-08-12**, galleria compresa e giro del backup compreso: M6 è chiusa davvero, non solo scritta |
 | **M7 — Rifinitura** ← *in corso* | ~~Icona~~, ~~**nome dell'app**~~, keystore personale + backup, versione da alzare, **rinominare il package** | APK stabile che aggiorni quando vuoi. **Fatti il 2026-08-13 icona e nome**: il manifest dice `Where We Go` e l'icona è il globo di `assets-sorgente/icona-globo.png`, in icona adattiva (§4.3). Restano keystore, versione e rename. Il rename dell'`applicationId` va fatto **dopo** aver salvato un backup: cambiarlo non aggiorna l'app installata, ne affianca una seconda, e i dati della prima restano dentro quella vecchia |
+| **M8 — Pubblicazione** | Account e test chiuso, build di release firmata e AAB, obblighi ODbL assolti, privacy policy, dichiarazioni e materiali della scheda (§14) | App scaricabile da Google Play. La coda più lunga non è il codice ma l'accesso alla produzione (§14.1), quindi si avvia per prima; il vincolo che può fermare tutto è l'ODbL (§14.5) |
 
 ---
 
@@ -1442,7 +1742,10 @@ Tre cose da tenere presenti quando si comincia:
 - **Stemmi regionali**: copertura parziale dichiarata apertamente. Si bundle-ano solo le immagini
   PD / CC-BY / CC-BY-SA estratte da Wikidata; per le regioni scoperte, bandiera nazionale
   desaturata con bordo verde.
-- **Distribuzione**: nessuna. APK compilato in locale e installato a mano (§4).
+- **Distribuzione**: **sugli store**, Google Play per primo e Galaxy Store come alternativa a basso
+  attrito (§14.8). La scelta originaria — nessuna distribuzione, APK compilato in locale e
+  installato a mano (§4) — resta valida come modo di lavorare durante lo sviluppo, ma non è più il
+  punto d'arrivo. Requisiti, obblighi e ordine dei passi sono in §14.
 - **Dati suddivisioni**: geoBoundaries gbOpen con livello per paese e ripieghi
   Natural Earth; attribuzioni in `docs/LICENZE_REGIONI.md`.
 - **Protezione dal nascondimento**: risolta, vedi §2.3. Non una soglia unica di popolazione, ma
@@ -1475,3 +1778,182 @@ risultato reale, non decisioni da prendere a tavolino:
    presto, perché i layer `symbol` sono i più costosi di MapLibre.
 3. Se le due soglie del ritardo dell'affollamento (§2.4) siano tarate bene: rifare la pipeline ora
    costa tre minuti e mezzo, quindi provare una variante è quasi gratis.
+
+---
+
+## 14. Pubblicazione sugli store
+
+Questa sezione sostituisce la decisione «nessuna distribuzione» di §0 e §4, che resta scritta
+sopra come cronologia della scelta iniziale. Pubblicare non è la stessa app con un canale in più:
+cambia tre cose che finora non esistevano.
+
+1. **Costa.** L'account Google Play è **25 $ una tantum**, non ricorrenti. Il «costo zero assoluto»
+   di §0 vale ancora per i dati e per gli strumenti, non per la pubblicazione.
+2. **Rende reali gli obblighi sulle licenze.** Finché l'APK sta su un telefono solo, i dati non
+   sono ridistribuiti. Su uno store lo sono, e le 96 fonti share-alike di `docs/LICENZE_REGIONI.md`
+   diventano un vincolo con una risposta obbligata (§14.5).
+3. **Rende irreversibili due scelte tecniche** — `applicationId` e chiave di firma — che oggi si
+   cambiano con un rebuild (§14.2).
+
+> Le regole delle console cambiano spesso. Ogni numero e ogni scadenza qui sotto va riverificato
+> nella Play Console il giorno in cui si comincia, non dato per buono perché scritto qui.
+
+> **L'elenco operativo, in ordine di esecuzione e con lo stato di ogni voce, è in
+> [`docs/PUBBLICAZIONE.md`](PUBBLICAZIONE.md).** Questa sezione dice il perché; quel file dice cosa
+> fare e in che ordine.
+
+### 14.1 Account e accesso alla produzione — è il cammino critico
+
+Non è lavoro di codice, ma è la parte che dura settimane, quindi va avviata **per prima**, in
+parallelo a tutto il resto.
+
+- [ ] Registrare l'account sviluppatore (25 $) e completare la **verifica d'identità**: nome,
+      indirizzo, telefono. Per un account personale i contatti verificati vengono mostrati sulla
+      scheda pubblica dell'app; chi non vuole il proprio indirizzo di casa in vetrina deve
+      procurarsene uno alternativo prima, non dopo.
+- [ ] Per gli account personali: **test chiuso con almeno 12 tester per 14 giorni continuativi**
+      prima di poter chiedere l'accesso alla produzione. Servono 12 persone vere che installino
+      l'app e la tengano installata: è la voce con più tempo di attesa dell'intero piano.
+- [ ] Compilare la sezione «Contenuti dell'app» per intero: privacy policy, annunci, accesso,
+      classificazione, pubblico di destinazione, sicurezza dei dati (§14.6).
+
+### 14.2 Le due scelte irreversibili
+
+- [ ] **Rinominare l'`applicationId`** (oggi `com.provamappa.globe`) *prima* della prima
+      pubblicazione. Dopo, è l'identità dell'app per sempre: cambiarlo significa pubblicare
+      un'app diversa e perdere installazioni e recensioni. Vale ancora l'avvertenza di §12.1 —
+      esportare il backup prima, perché le marcature stanno nel `localStorage` della WebView,
+      cioè dentro la cartella dati del package.
+- [ ] **Firma**: generare il keystore personale (già previsto da M7) e attivare **Play App
+      Signing**. Con Play App Signing la chiave di distribuzione la tiene Google e la nostra
+      diventa la *upload key*, che in caso di smarrimento si può far sostituire: è l'unica
+      configurazione in cui perdere il portachiavi non chiude il progetto. Copia del keystore
+      fuori dal PC, mai in git.
+- [ ] `versionName` da `0.6-backup` a qualcosa di pubblicabile (`1.0`), `versionCode` monotono:
+      ogni caricamento ne vuole uno nuovo e più alto, anche per i test.
+
+### 14.3 Build di release — oggi non esiste
+
+`android/app/build.gradle.kts` ha **solo il buildType `debug`**. Servono:
+
+- [ ] un buildType `release` con `isMinifyEnabled = true`, `isShrinkResources = true` e le regole
+      ProGuard. Il ponte JS→Kotlin è la cosa che R8 può rompere: le regole di default tengono i
+      metodi annotati `@JavascriptInterface`, ma va **provato sull'APK offuscato**, non solo
+      verificato che compili. Il restringimento delle risorse non tocca gli `assets`, quindi i
+      PMTiles non corrono rischi da questa parte.
+- [ ] condizionare `WebView.setWebContentsDebuggingEnabled(true)`
+      (`android/app/src/main/java/com/provamappa/globe/MainActivity.kt:69`) a `BuildConfig.DEBUG`:
+      lasciarlo acceso in release espone il contenuto della WebView a chiunque colleghi il
+      telefono.
+- [ ] portare `compileSdk` e `targetSdk` a **36**, con l'aggiornamento di AGP e Gradle che ne
+      consegue. È il requisito Play per le app nuove e per gli aggiornamenti.
+- [ ] con `targetSdk` 36 la **predictive back** è attiva di default: provare che i `BackHandler`
+      di menu, galleria e schermata «Informazioni e licenze» non facciano uscire dall'app per
+      sbaglio, e dichiarare `android:enableOnBackInvokedCallback` in modo esplicito.
+- [ ] verificare il supporto alle **pagine da 16 KB**: l'app non ha librerie native proprie, ma il
+      controllo è richiesto e si fa sull'artefatto finale.
+- [ ] definire esplicitamente le regole di backup (`dataExtractionRules`): finché lo stato vive nel
+      `localStorage` della WebView, quello che succede cambiando telefono dipende dal backup
+      automatico, cioè oggi dal caso. Con Room (il debito di M2) la questione si semplifica.
+
+### 14.4 Peso e formato — il punto da misurare per primo
+
+L'APK di debug di oggi pesa **144 MB**: 57 MB di `citta.db` più circa 100 MB di `web/data`, e i
+PMTiles non si comprimono perché sono già impacchettati.
+
+- [ ] Generare l'**AAB** e leggere la dimensione di download stimata nella Console. Il tetto del
+      modulo base è dell'ordine dei 200 MB: ci si sta, ma il margine è sottile e cresce a ogni
+      aggiornamento dei dati.
+- [ ] Se si sfora, la strada è **Play Asset Delivery** con un asset pack install-time — cioè
+      esattamente il meccanismo che §4.2 si vantava di non dover usare. Non è un dramma, ma è
+      lavoro vero e va saputo prima, non scoperto al primo caricamento rifiutato.
+- [ ] **Provare l'AAB convertito in APK con `bundletool`, installarlo e aprire la mappa.** La
+      lettura a pezzi dei PMTiles dipende da `noCompress` (§4.2) e dalla lista che il bundle si
+      porta dietro: se la conversione li comprime, `assets.openFd` smette di funzionare e la mappa
+      resta vuota. È un guasto che l'APK compilato direttamente non mostra.
+
+### 14.5 Licenze — è qui che si decide se si può pubblicare
+
+- [x] **ODbL — deciso il 2026-09-06.** 96 delle 198 fonti regionali sono share-alike, e
+      distribuire l'app è uso pubblico del database derivato. Si assolve **pubblicando i dati**,
+      non solo il metodo: `tools/pacchetto_odbl.js` costruisce un archivio con **un file GeoJSON per
+      paese** (212 file, 3.343 suddivisioni, 10 MB), ognuno con fonte, licenza, URL dell'originale,
+      elenco delle modifiche e SHA-256 nel manifest. Un file per paese non è una comodità: è ciò che
+      evita di fondere geometrie ODbL e CC BY-SA nello stesso file, cioè l'unico punto in cui le due
+      licenze sarebbero incompatibili. L'archivio va allegato a una Release del repository pubblico
+      insieme a `boundaries.pmtiles`; la schermata «Informazioni e licenze» ci punta già.
+- [ ] **Attribuzioni dei dati** già presenti in `CREDITI.md` e in `docs/LICENZE_REGIONI.md`:
+      GeoNames CC BY 4.0, geoBoundaries CC BY 4.0, Natural Earth in pubblico dominio. Verificare
+      che la schermata dell'app le mostri tutte, non solo le principali.
+- [ ] **Avvisi delle dipendenze**: Apache 2.0 per AndroidX e Coil, BSD-3 per MapLibre GL JS,
+      licenze di `pmtiles.js`, dei font e dei glifi. Da **generare** in pipeline, non da scrivere a
+      mano: un elenco compilato a mano è sbagliato al primo aggiornamento di libreria.
+- [ ] **Foto di Commons**: autore, licenza e collegamento alla pagina originale accanto a ogni
+      immagine mostrata, non un avviso generico in fondo alla schermata.
+- [ ] **Nome**: verificare che «Where We Go» non collida con un marchio o con un'app già in
+      catalogo, prima di stamparlo su icona, scheda e URL.
+- [ ] **Privacy policy** a un URL pubblico e stabile (basta GitHub Pages), collegata dall'app e
+      dichiarata nella Console. Dice l'unica cosa vera: nessun account, nessuna raccolta, tutto in
+      locale; l'unica uscita in rete è la galleria, che aprendo una foto fa arrivare l'indirizzo IP
+      a Wikimedia.
+
+### 14.6 Dichiarazioni e contenuti
+
+- [ ] **Sicurezza dei dati**: «nessun dato raccolto né condiviso». Il backup lo esporta l'utente
+      con il selettore di sistema e non passa da noi.
+- [ ] **Classificazione dei contenuti** (questionario IARC) e pubblico di destinazione: **non**
+      bambini, altrimenti si entra nelle politiche Famiglie, che sono un altro mondo di requisiti.
+- [ ] **La galleria di Commons resta il punto sensibile della classificazione.** Non è una ricerca
+      libera per nome: `GalleriaCommons` interroga `generator=geosearch` sulle coordinate, tiene
+      solo il namespace `File:` e scarta per nome le non-foto e le immagini orbitali. Il rischio è
+      quindi molto più stretto di quanto sembri — ma resta contenuto di terzi non curato, perché
+      chiunque può geotaggare qualunque file entro il raggio di ricerca. Prima di pubblicare serve
+      almeno **un modo per segnalare una foto** e una risposta pronta al questionario IARC; il
+      filtro più stretto (immagine principale da Wikidata) è un ripiego se la classificazione
+      diventa un problema, non un lavoro da fare adesso.
+- [x] **Confini contestati** — detto nella schermata licenze il 2026-09-06: la mappa mostra quello
+      che dichiara la fonte di ciascun paese, le fonti si contraddicono (India/Pakistan e
+      India/Cina si sovrappongono per quasi 190.000 km², misurati) e l'app non arbitra. Resta
+      valido il resto: una mappa mondiale dice qualcosa su Kashmir, Crimea, Cipro, Taiwan,
+      Palestina e Sahara occidentale, e in alcuni paesi attira segnalazioni. Non impedisce la
+      pubblicazione; conviene sapere quale fonte sta parlando e dirlo nella schermata licenze.
+- [ ] **Materiali della scheda**: icona 512×512 PNG a 32 bit, immagine in evidenza 1024×500,
+      almeno due screenshot per telefono più quelli per tablet, titolo entro 30 caratteri,
+      descrizione breve entro 80 e lunga entro 4000. Gli screenshot vanno presi sul globo con le
+      bandiere accese: è la cosa che distingue l'app dalle altre del genere.
+- [ ] Dichiarazioni residue: nessuna pubblicità, nessun login, non è un'app di notizie, né
+      governativa, né finanziaria, né sanitaria.
+
+### 14.7 Collaudo prima della prima release
+
+- [ ] Provare su telefono reale la build **release**, non quella di debug: mappa offline, ricerca,
+      regioni, galleria e giro completo del backup.
+- [ ] Usare il **pre-launch report** della Console: gira gratis su modelli che non abbiamo e
+      raccoglie i crash prima che li veda un utente.
+- [ ] Provare l'**aggiornamento sopra**: installare una release, marcare qualcosa, installare la
+      successiva, verificare che i dati siano ancora lì.
+
+### 14.8 Gli altri store
+
+- **Galaxy Store** — coerente col dispositivo di riferimento (§0): account gratuito, requisiti più
+  leggeri, stessi materiali di scheda, nessun obbligo dei 12 tester. È lo store col rapporto
+  fatica/risultato migliore se Play si impantana.
+- **Amazon Appstore** — gratuito, accetta l'APK, pubblico piccolo. Costa poco aggiungerlo una volta
+  che i materiali esistono.
+- **F-Droid** — nello spirito del progetto, ma compila **dai sorgenti** nella propria
+  infrastruttura: i dati versionati sarebbero blob binari da rigenerare in build, e la pipeline
+  scarica 2,19 GB (§3 e `docs/MIGRAZIONE.md`). Da prendere in considerazione solo accettando di
+  riscrivere la build.
+- **App Store di Apple** — fuori portata, e non per volontà: 99 $ l'anno e una shell da riscrivere.
+  Il globo nella WebView si porterebbe dietro, tutta l'interfaccia Compose no.
+
+### 14.9 Ordine consigliato
+
+1. **Decidere come si assolve l'ODbL** (§14.5). Se non c'è una risposta, il resto è tempo speso a
+   vuoto.
+2. **Avviare l'account e il test chiuso** (§14.1): è la coda più lunga, e scorre mentre si lavora.
+3. **Rename dell'`applicationId`, keystore, buildType release** (§14.2, §14.3), in quest'ordine e
+   con il backup esportato prima.
+4. **Misurare l'AAB** e decidere se serve Play Asset Delivery (§14.4).
+5. **Privacy policy, avvisi delle licenze, limite alla galleria** (§14.5, §14.6).
+6. **Materiali della scheda e collaudo** (§14.6, §14.7), poi produzione.

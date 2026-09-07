@@ -16,6 +16,8 @@ data_raw/
 # Roba generata: si rifà, non si versiona
 # --------------------------------------------------------------------------
 node_modules/
+# Il pacchetto dei dati derivati per la Release: lo rifa' tools/pacchetto_odbl.js
+dist/
 android/build/
 android/app/build/
 android/.gradle/
@@ -63,3 +65,4 @@ backup-*.json
 Thumbs.db
 .DS_Store
 *.log
+__pycache__/
