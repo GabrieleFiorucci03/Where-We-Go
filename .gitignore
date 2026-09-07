@@ -66,3 +66,13 @@ Thumbs.db
 .DS_Store
 *.log
 __pycache__/
+
+# Le case di Gradle finite qui dentro per un -g sbagliato. Sono cache: si
+# rifanno da sole e non sono roba del progetto. In .gradle-local il solo
+# gradle-api-8.11.1.jar pesa 178 MB, oltre il limite di 100 MB per file di
+# GitHub; in .gradle-user erano rimasti i resti di un download interrotto del
+# wrapper (.zip.part e .zip.lck, zero byte).
+# Il wrapper vero, android/gradle/wrapper/, resta versionato: serve a chi
+# compila per prendere la stessa versione di Gradle.
+.gradle-local/
+.gradle-user/
