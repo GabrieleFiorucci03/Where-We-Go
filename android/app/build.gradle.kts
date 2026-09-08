@@ -12,8 +12,8 @@ android {
         applicationId = "com.provamappa.globe"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.6-backup"
+        versionCode = 7
+        versionName = "1.3.3"
     }
 
     buildTypes {
