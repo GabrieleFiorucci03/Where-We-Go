@@ -5,7 +5,10 @@ personale: globo 3D a schermo intero, e ogni nazione, regione o città si marca
 *visitata* / *in programma* / *niente*. Le nazioni visitate si riempiono con la
 propria bandiera. Funziona **senza rete**: i dati stanno nell'APK.
 
-Non è su nessuno store, e non è pensata per andarci: si compila e si installa a mano.
+Si scarica dalla [Release più recente](https://github.com/GabrieleFiorucci03/Where-We-Go/releases/latest):
+è un APK da installare a mano, consentendo le origini sconosciute. La pubblicazione sugli
+store è in programma; oggi l'APK è firmato con la chiave di debug di Android, che gli
+store non accettano. In alternativa si compila da qui.
 
 ## Com'è fatta
 

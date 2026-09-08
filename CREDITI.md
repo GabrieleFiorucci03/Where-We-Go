@@ -10,13 +10,13 @@ si usano e — dove serve — cosa comporta per chi vuole ridistribuirli.
 <https://www.geoboundaries.org>
 
 L'app sceglie per ciascun paese il livello amministrativo che corrisponde meglio
-a una «regione» di viaggio. Usa geoBoundaries per 198 paesi o territori e
-Natural Earth per 14 ripieghi; 12 paesi restano senza suddivisioni. I file
+a una «regione» di viaggio. Usa geoBoundaries per 197 paesi o territori e
+Natural Earth per 15 ripieghi; 12 paesi restano senza suddivisioni. I file
 geoBoundaries sono quelli semplificati pubblicati dal progetto, fissati ai commit
 indicati in `tools/livelli_regioni.json`.
 
 La licenza non si riduce a una sola riga: le fonti nazionali aggregate da
-geoBoundaries conservano licenze proprie. **96 su 198 sono ODbL o CC BY-SA**, e
+geoBoundaries conservano licenze proprie. **95 su 197 sono ODbL o CC BY-SA**, e
 quindi hanno obblighi share-alike oltre all'attribuzione. L'elenco completo per
 paese, con anno, licenza e fonte dichiarata, è in
 [`docs/LICENZE_REGIONI.md`](docs/LICENZE_REGIONI.md).
@@ -63,7 +63,7 @@ derivati (i tile `cities.pmtiles`, l'indice `citta.db`) deve citare GeoNames.
 <https://www.naturalearthdata.com> — **pubblico dominio**
 
 Pubblico dominio. È la fonte dei confini nazionali di riferimento e dei 37 ripieghi
-senza suddivisioni regionali disponibili. È usato anche per i 14 territori elencati
+senza suddivisioni regionali disponibili. È usato anche per i 15 territori elencati
 nell'appendice delle licenze regionali, nei quali geoBoundaries non offre il
 livello editoriale scelto.
 
