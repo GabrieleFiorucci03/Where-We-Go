@@ -24,6 +24,11 @@ android {
 
     buildFeatures {
         compose = true
+        // Da AGP 8 va chiesto esplicitamente. Serve a `BuildConfig.VERSION_NAME`,
+        // che finisce nello User-Agent mandato a Wikimedia: scritto a mano era
+        // rimasto a `0.6` mentre l'app era alla 1.3.3, cioe' diceva una cosa
+        // falsa proprio a chi la legge per identificarci.
+        buildConfig = true
     }
 
     compileOptions {

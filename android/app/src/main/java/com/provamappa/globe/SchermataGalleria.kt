@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -92,7 +93,7 @@ fun SchermataGalleria(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onChiudi) {
-                    Icon(Icons.Filled.Close, contentDescription = "Chiudi")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -118,13 +119,13 @@ fun SchermataGalleria(
                     null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                     is Esito.Trovate -> Griglia(e.foto, onApriFoto)
                     Esito.Vuoto -> Spiegazione(
-                        "Nessuna foto qui",
-                        "Wikimedia Commons non ha fotografie geolocalizzate entro 10 km da " +
-                            "${selezione.nome}. Non vuol dire che non ci sia niente da vedere: " +
-                            "la copertura di Commons è ottima in Europa e negli Stati Uniti, " +
-                            "molto scarsa altrove.",
+                        stringResource(R.string.gallery_empty_title),
+                        stringResource(R.string.gallery_empty_body, selezione.nome),
                     )
-                    is Esito.Errore -> Spiegazione("Non ha funzionato", e.messaggio)
+                    is Esito.Errore -> Spiegazione(
+                        stringResource(R.string.gallery_error_title),
+                        stringResource(e.messaggio),
+                    )
                 }
             }
 
@@ -134,7 +135,7 @@ fun SchermataGalleria(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
             ) {
                 Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text("Cerca sul web — apre il browser")
+                Text(stringResource(R.string.gallery_web))
             }
         }
     }
@@ -159,7 +160,10 @@ private fun Griglia(foto: List<Foto>, onApri: (Foto) -> Unit) {
         if (dintorni.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
-                    if (vicine.isEmpty()) "Solo nei dintorni" else "Nei dintorni",
+                    stringResource(
+                        if (vicine.isEmpty()) R.string.gallery_only_around
+                        else R.string.gallery_around
+                    ),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),

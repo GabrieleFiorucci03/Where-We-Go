@@ -47,7 +47,13 @@ class IndiceRegioni(context: Context) {
                 val nome = p.optString("name")
                 if (codice.isEmpty() || nome.isEmpty()) continue
                 val (lat, lon) = centro(f.optJSONObject("geometry"))
-                out.add(Voce("regions", codice, nome, sotto = "regione", lat = lat, lon = lon))
+                out.add(
+                    Voce(
+                        "regions", codice, nome,
+                        sotto = app.getString(R.string.subtitle_region),
+                        lat = lat, lon = lon,
+                    )
+                )
             }
             Log.i(TAG, "$iso3: ${out.size} regioni in ${System.currentTimeMillis() - t0} ms")
             out.sortedBy { it.nome }

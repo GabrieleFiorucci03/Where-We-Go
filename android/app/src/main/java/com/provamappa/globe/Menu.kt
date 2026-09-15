@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 /**
@@ -53,7 +54,7 @@ fun Menu(
     ) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
             ListItem(
-                headlineContent = { Text("Cerca una città o una nazione") },
+                headlineContent = { Text(stringResource(R.string.menu_search_title)) },
                 supportingContent = {
                     // I numeri **veri**, contati all'apertura del menu. Erano
                     // scritti a mano — "Fra 440.273 città" — quindi comparivano
@@ -65,7 +66,7 @@ fun Menu(
                 modifier = Modifier.clickable(enabled = indiceDisponibile, onClick = onElenchi),
             )
             ListItem(
-                headlineContent = { Text("Elenco delle nazioni") },
+                headlineContent = { Text(stringResource(R.string.menu_countries_title)) },
                 supportingContent = {
                     Text(statoIndice)
                 },
@@ -73,14 +74,14 @@ fun Menu(
                 modifier = Modifier.clickable(enabled = indiceDisponibile, onClick = onElenchi),
             )
             ListItem(
-                headlineContent = { Text("Statistiche") },
-                supportingContent = { Text("Quanto mondo hai visto") },
+                headlineContent = { Text(stringResource(R.string.menu_stats_title)) },
+                supportingContent = { Text(stringResource(R.string.menu_stats_subtitle)) },
                 leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onStatistiche),
             )
             ListItem(
-                headlineContent = { Text("Salva l'immagine del globo") },
-                supportingContent = { Text("Un PNG di come si vede adesso") },
+                headlineContent = { Text(stringResource(R.string.menu_image_title)) },
+                supportingContent = { Text(stringResource(R.string.menu_image_subtitle)) },
                 leadingContent = { Icon(Icons.Filled.Image, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onEsportaImmagine),
             )
@@ -90,20 +91,20 @@ fun Menu(
             // un'app del genere (§8), quindi salvarli dev'essere facile da
             // trovare quanto guardarli.
             ListItem(
-                headlineContent = { Text("Salva un backup") },
-                supportingContent = { Text("Un file JSON, dove vuoi tu") },
+                headlineContent = { Text(stringResource(R.string.menu_backup_title)) },
+                supportingContent = { Text(stringResource(R.string.menu_backup_subtitle)) },
                 leadingContent = { Icon(Icons.Filled.Save, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onSalvaBackup),
             )
             ListItem(
-                headlineContent = { Text("Ripristina da un backup") },
-                supportingContent = { Text("Sostituisce tutto ciò che hai segnato") },
+                headlineContent = { Text(stringResource(R.string.menu_restore_title)) },
+                supportingContent = { Text(stringResource(R.string.menu_restore_subtitle)) },
                 leadingContent = { Icon(Icons.Filled.Restore, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onRipristina),
             )
             ListItem(
-                headlineContent = { Text("Informazioni e licenze") },
-                supportingContent = { Text("Fonti, attribuzioni e privacy") },
+                headlineContent = { Text(stringResource(R.string.menu_about_title)) },
+                supportingContent = { Text(stringResource(R.string.menu_about_subtitle)) },
                 leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) },
                 modifier = Modifier.clickable(onClick = onInformazioni),
             )

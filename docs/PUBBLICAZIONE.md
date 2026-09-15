@@ -4,8 +4,12 @@ Tutto quello che serve, in ordine di esecuzione. Il ragionamento dietro ogni sce
 **§14 di `docs/PIANO.md`**; qui ci sono solo le cose da fare, con lo stato di oggi.
 
 - `[ ]` da fare · `[x]` fatto e verificato · `[~]` fatto a metà o da riverificare
-- **Data di questo stato: 2026-09-06.** I valori correnti sono stati letti dal repository, non
-  dedotti dal piano.
+- **Data di questo stato: 2026-09-12.** I valori correnti sono stati riletti dal repository, non
+  dedotti dal piano. Rispetto al 2026-09-09 sono cambiate due cose: **l'app è diventata
+  multilingue** (inglese nativo, italiano quando il telefono è in italiano — vedi §9.0 di
+  `PIANO.md`), e la **Release ODbL risulta già pubblicata**, cosa che la versione precedente di
+  questo documento dava ancora per fare. Resta invariato il vincolo che comanda tutto:
+  **il peso, 252 MB**.
 - Le regole delle console cambiano: ogni soglia, formato e scadenza qui sotto va riverificato
   nella Play Console il giorno in cui si esegue il passo.
 
@@ -14,12 +18,15 @@ Tutto quello che serve, in ordine di esecuzione. Il ragionamento dietro ogni sce
 | Cosa | Oggi | Deve diventare |
 |---|---|---|
 | `applicationId` | `com.provamappa.globe` | dominio definitivo, scelto una volta per sempre |
-| `versionName` / `versionCode` | `0.6-backup` / `6` | `1.0` / `7` o più |
-| `compileSdk` / `targetSdk` | 35 / 35 | 36 / 36 |
+| `versionName` / `versionCode` | ✅ `1.3.3` / `7` | va bene così; il `versionCode` sale a ogni caricamento |
+| `compileSdk` / `targetSdk` | 35 / 35 | 36 / 36 — **scaduto**, vedi Fase 3 |
+| AGP / Gradle | 8.7.3 / 8.11.1 | versioni che reggono l'SDK 36 |
 | buildType | solo `debug` | `debug` + `release` firmato |
 | Firma | chiave di debug | keystore personale + Play App Signing |
-| Artefatto | APK di debug, **179 MB** (era 144 prima dell'allineamento dei confini) | AAB, download stimato sotto il tetto |
+| Artefatto | APK di debug, **252 MB** (`dist/WhereWeGo-1.3.3.apk`, 2026-09-08; era 179 il 06-09 e 144 prima dell'allineamento dei confini) | AAB, download stimato sotto il tetto |
+| Assets della WebView | tutta `web/`, banco di prova compreso | in release solo ciò che serve, vedi Fase 3 |
 | Debug della WebView | acceso sempre (`MainActivity.kt:69`) | solo in `BuildConfig.DEBUG` |
+| Lingua | ✅ inglese nativo + italiano, segue il telefono | va bene così; la **scheda dello store** va però scritta in inglese per prima, vedi Fase 7 |
 
 ---
 
@@ -29,12 +36,15 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
 
 - [x] **Come si assolve l'ODbL — deciso il 2026-09-06: si pubblica l'archivio derivato** come
       Release del repository pubblico, e il metodo resta pubblico perché gli script della pipeline
-      sono già versionati. Il pacchetto lo costruisce `tools/pacchetto_odbl.js`: 212 file GeoJSON,
-      uno per paese, 3.343 suddivisioni, 10 MB (3,5 MB zippati), ciascuno con fonte, licenza, URL
-      dell'originale, modifiche applicate e SHA-256 nel manifest. **Un file per paese** è la scelta
+      sono già versionati. Il pacchetto lo costruisce `tools/pacchetto_odbl.js`: 212 file GeoJSON
+      di suddivisioni più 212 di confini nazionali, uno per paese, 3.343 suddivisioni, ciascuno con
+      fonte, licenza, URL dell'originale, modifiche applicate e SHA-256 nel manifest.
+      **Generato il 2026-09-08 in `dist/`: 198 MB sciolti, 72 MB in `dati-derivati.zip`** — non i
+      10 MB scritti qui prima, che erano di una versione con geometrie più semplificate; resta
+      sotto il limite dei 2 GB per allegato di una Release. **Un file per paese** è la scelta
       che risolve il nodo giuridico: nessuna geometria ODbL finisce nello stesso file di una
       CC BY-SA, quindi le due licenze non si devono rendere compatibili fra loro.
-      Resta da **creare la Release** (Fase 5).
+      **La Release esiste**: è la `v1.3.3`, pubblicata l'8 settembre (Fase 5).
 - [ ] **Package definitivo**, cioè il dominio da cui deriva l'`applicationId`. Serve prima del
       rename, ed è irreversibile dopo la prima pubblicazione.
 - [ ] **Tipo di account**: personale oppure organizzazione. L'organizzazione richiede un D-U-N-S e
@@ -72,8 +82,9 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
 - [ ] **Attivare Play App Signing** al primo caricamento: Google tiene la chiave di distribuzione,
       la nostra resta la *upload key*, sostituibile se la si perde. È l'unica configurazione in cui
       perdere il portachiavi non chiude il progetto.
-- [ ] Portare `versionName` a `1.0` e alzare `versionCode`: ogni caricamento, test compresi, ne
-      vuole uno nuovo e più alto.
+- [x] **Versione pubblicabile: fatto.** `versionName 1.3.3`, `versionCode 7`, allineati ai tag del
+      repository. Resta solo la regola permanente: ogni caricamento, test interni compresi, vuole
+      un `versionCode` nuovo e più alto.
 
 ## Fase 3 — Build di release (oggi non esiste)
 
@@ -84,41 +95,76 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
       Il restringimento delle risorse non tocca gli `assets`, quindi i PMTiles non rischiano.
 - [ ] Condizionare `WebView.setWebContentsDebuggingEnabled(true)`
       (`android/app/src/main/java/com/provamappa/globe/MainActivity.kt:69`) a `BuildConfig.DEBUG`.
-- [ ] Portare `compileSdk` e `targetSdk` a **36**, aggiornando AGP e Gradle di conseguenza.
+      **Un ostacolo in meno dal 2026-09-12**: `buildFeatures { buildConfig = true }` è già acceso
+      in `build.gradle.kts` — serviva allo User-Agent di Wikimedia — quindi `BuildConfig` esiste
+      già e resta solo la riga da condizionare.
+- [ ] **Escludere dagli assets di release il banco di prova.** `build.gradle.kts:40` include tutta
+      `../web` così com'è, quindi nell'APK finiscono anche `compare.html`, `pmtiles-test.html`,
+      `android.html` e **`web/data/firenze.pmtiles` (6,3 MB)**, che servivano allo sviluppo. Non è
+      solo peso: sono pagine di officina dentro un'app pubblica.
+- [ ] Portare `compileSdk` e `targetSdk` a **36**, aggiornando AGP e Gradle di conseguenza (oggi
+      AGP 8.7.3 e Gradle 8.11.1, che l'SDK 36 non lo reggono). **La scadenza Play del 31 agosto
+      2026 è passata**: il 36 non è più un adeguamento da fare con calma, senza non si carica né
+      un'app nuova né un aggiornamento.
 - [ ] Verificare la **predictive back**, attiva di default con `targetSdk` 36: i `BackHandler` di
       menu, galleria, indice e schermata «Informazioni e licenze» non devono far uscire dall'app
-      per sbaglio. Dichiarare `android:enableOnBackInvokedCallback` esplicitamente.
+      per sbaglio. Dichiarare `android:enableOnBackInvokedCallback` esplicitamente: oggi nel
+      manifest non c'è.
 - [ ] Verificare il supporto alle **pagine da 16 KB** sull'artefatto finale (l'app non ha librerie
       native proprie, ma il controllo è richiesto).
 - [ ] Definire le regole di backup (`dataExtractionRules`): finché lo stato vive nel `localStorage`
-      della WebView, il comportamento al cambio di telefono dipende dal backup automatico.
+      della WebView, il comportamento al cambio di telefono dipende dal backup automatico. Oggi il
+      manifest non dichiara né `allowBackup` né le regole, quindi il comportamento è quello di
+      default — cioè non scelto da noi.
 - [ ] Controllare che `android:debuggable` non finisca nel manifest di release e che non restino
       log verbosi di sviluppo.
 
 ## Fase 4 — Peso e formato dell'artefatto
 
+> **È il vincolo che comanda questa fase, e dal 2026-09-08 non è più un margine stretto: è uno
+> sforamento probabile.** L'APK è a **252 MB**, il tetto del modulo base è dell'ordine dei 200 MB
+> di download. Va misurato prima di ogni altro lavoro di Fase 3, perché se serve Play Asset
+> Delivery cambia la struttura del progetto, non una riga di configurazione.
+
 - [ ] **Generare l'AAB** (`bundleRelease`) e leggere la **dimensione di download stimata** nella
-      Console. Oggi l'APK di debug pesa **179 MB**: 57 MB di `citta.db`, ~100 MB di `web/data` e
-      ~30 MB di sagome regionali, e i PMTiles non si comprimono. Il margine sotto il tetto del
-      modulo base si è assottigliato: è la misura da fare per prima.
+      Console. Oggi l'APK di debug pesa **252 MB**, così ripartiti:
+
+      | Cosa | Peso | Note |
+      |---|---|---|
+      | `web/data/region-shapes` | 113 MB | **3.343 file GeoJSON sciolti**, uno per suddivisione |
+      | `web/data/country-shapes` | 92 MB | 249 file GeoJSON sciolti |
+      | `android/app/src/main/assets/citta.db` | 57 MB | indice SQLite FTS4 |
+      | `web/data/boundaries.pmtiles` | 43 MB | `noCompress`, non comprimibile |
+      | `web/data/cities.pmtiles` | 41 MB | idem |
+      | `web/data/border-lines.pmtiles` | 27 MB | idem |
+      | `web/data/firenze.pmtiles` | 6,3 MB | banco di prova, da togliere (Fase 3) |
+
+      I 205 MB di sagome sono il posto dove guardare per primo: 3.592 GeoJSON sciolti sono il
+      formato più costoso possibile per quei dati, e a differenza dei PMTiles si comprimono.
 - [ ] **Convertire l'AAB in APK con `bundletool`, installarlo e aprire la mappa.** La lettura a
       pezzi dei PMTiles dipende da `noCompress`: se la conversione li comprime, `assets.openFd`
       smette di funzionare e la mappa resta vuota. È un guasto che l'APK compilato direttamente
       non mostra.
-- [ ] Se il download stimato sfora il tetto del modulo base (dell'ordine dei 200 MB): introdurre
-      **Play Asset Delivery** con un asset pack install-time, e riprovare il giro qui sopra.
+- [ ] Quando il download stimato sfora il tetto del modulo base (dell'ordine dei 200 MB — coi
+      numeri di oggi è l'esito da aspettarsi, non l'eccezione): **Play Asset Delivery** con un
+      asset pack install-time, e riprovare il giro qui sopra. In alternativa, o prima: ricompattare
+      le sagome, che è lavoro di pipeline e non tocca la struttura del progetto.
 
 ## Fase 5 — Obblighi legali
 
-- [~] **Pubblicare l'archivio derivato ODbL.** Il pacchetto si genera con
-      `node tools/pacchetto_odbl.js` (esce in `dist/`, non versionato) e la schermata
-      «Informazioni e licenze» punta già a `github.com/GabrieleFiorucci03/Where-We-Go/releases/latest`.
-      **Resta da creare la Release** e allegarci `dati-derivati.zip` più `boundaries.pmtiles`, che è
-      la forma effettivamente inclusa nell'app. Da rifare a ogni rigenerazione dei dati.
+- [x] **Pubblicare l'archivio derivato ODbL — fatto.** Verificato il 2026-09-12 sulla Release
+      vera, non sul piano: `v1.3.3` è pubblicata dall'8 settembre, è quella che risponde a
+      `releases/latest` — cioè l'indirizzo a cui punta la schermata «Informazioni e licenze» — e
+      porta allegati `dati-derivati.zip` (72 MB), `boundaries.pmtiles` (44 MB),
+      `border-lines.pmtiles` (28 MB) e l'APK. L'obbligo è assolto e la promessa della schermata
+      è vera. **Da rifare a ogni rigenerazione dei dati**, ed è l'unica parte che resta viva:
+      una Release ferma mentre i dati cambiano torna a essere una pagina che non contiene i
+      dati dell'app.
 - [ ] **Privacy policy** a un URL pubblico e stabile (basta GitHub Pages), collegata dall'app e
       dichiarata nella Console. Contenuto: nessun account, nessuna raccolta, tutto in locale;
       l'unica uscita in rete è la galleria, che facendo vedere una foto fa arrivare l'indirizzo IP
-      a Wikimedia.
+      a Wikimedia. **Nel repository oggi non ne esiste il testo**, in nessuna forma: è da scrivere,
+      non da pubblicare e basta. Serve a tutti gli store, non solo a Play.
 - [x] **Attribuzioni dei dati** in `CREDITI.md`, `docs/LICENZE_REGIONI.md` e nella schermata
       dell'app: geoBoundaries e GeoNames CC BY 4.0, Natural Earth pubblico dominio, ODbL e CC BY-SA
       dichiarate con i conteggi per licenza.
@@ -147,6 +193,11 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
 
 ## Fase 7 — Scheda dello store
 
+> In `dist/promo/` ci sono già quattro immagini fatte il 2026-09-08 (`globo-1.3.3.png`,
+> `europa-bandiere-1.3.3.png`, `wherewego-globo.png`, `wherewego-linkedin.png`): sono materiale
+> buono da cui ritagliare, ma **nessuna è in un formato di scheda**. I formati qui sotto vanno
+> prodotti apposta.
+
 - [ ] **Titolo** entro 30 caratteri.
 - [ ] **Descrizione breve** entro 80 caratteri.
 - [ ] **Descrizione lunga** entro 4000 caratteri.
@@ -156,7 +207,12 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
 - [ ] **Screenshot**: almeno due per telefono, più quelli per tablet. Vanno presi sul globo con le
       bandiere accese — è la cosa che distingue l'app dalle altre del genere.
 - [ ] Video promozionale (facoltativo).
-- [ ] Traduzioni della scheda, se si distribuisce fuori dall'Italia.
+- [ ] **Scrivere prima l'inglese, poi l'italiano.** Dal 2026-09-12 l'app è nativamente inglese, e
+      la lingua di default della scheda deve corrispondere: una scheda italiana su un'app che si
+      apre in inglese è la prima incoerenza che vede chi la installa. L'italiano si aggiunge come
+      traduzione della scheda, esattamente come `values-it/` è una traduzione dell'app.
+- [ ] **Dire nella descrizione che l'app segue la lingua del telefono**, e che da Android 13 la si
+      può forzare dal selettore di sistema: è una cosa che nessuno va a cercare da sé.
 
 ## Fase 8 — Collaudo prima del rilascio
 
@@ -174,6 +230,16 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
 - [ ] Provare l'**aggiornamento sopra**: installare una release, marcare qualcosa, installare la
       successiva, verificare che i dati siano ancora lì.
 - [ ] Provare l'app **in aereo**: tutto deve funzionare tranne la galleria.
+- [x] **Le due lingue, su emulatore API 35 (2026-09-12).** Provate davvero, non solo compilate:
+      telefono in inglese → interfaccia e nomi dei paesi inglesi, numeri `440,273`; selettore
+      per-app su italiano **a sistema ancora inglese** → tutto italiano e numeri `440.273`, che è
+      la prova che il ponte `AndroidUI.lingua()` serve (`navigator.language` avrebbe risposto
+      «inglese»); telefono in francese → ripiego completo sull'inglese, nome del paese compreso.
+      Verificata anche la ricerca interlingua: «Germania» digitato sull'app inglese trova Germany.
+- [ ] Ripetere il giro delle lingue **sulla build release**, dove R8 ha rimosso il codice non
+      raggiungibile: le risorse tradotte non si perdono, ma `@JavascriptInterface fun lingua()` è
+      un metodo chiamato solo da JavaScript, cioè esattamente la forma che R8 toglie per prima.
+      Se sparisce, i nomi dei paesi restano in italiano e non c'è nessun errore a dirlo.
 - [ ] Usare il **pre-launch report** della Console: gira gratis su modelli che non abbiamo.
 - [ ] Verificare l'app su schermo grande (tablet) e in orizzontale.
 
@@ -204,22 +270,36 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
       scarto sotto mezzo pixel a zoom 12. Il 2026-09-07 il caso misto viene corretto usando
       l'unione regionale per tutti i 212 paesi con suddivisioni, anche a dettaglio spento.
       Restano i disaccordi territoriali gia presenti fra fonti regionali.
-      **La build del 2026-09-06 pesava 179,3 MB**: rimisurare quella nuova e l'AAB (§14.4).
+      **Costo misurato: la build del 2026-09-06 pesava 179,3 MB, quella del 2026-09-08 ne pesa
+      252.** Non è più un debito che «peserà subito dopo»: è il vincolo di Fase 4.
 - [ ] **Stemmi delle regioni** (§7.3): esclusi per decisione, non per dimenticanza. Va detto nella
       descrizione, non lasciato scoprire.
 
-## Se Google Play si impantana — gli altri store
+## Su quali store, e in che ordine
 
-- **Galaxy Store** (coerente col dispositivo di riferimento): account gratuito, requisiti più
-  leggeri, stessi materiali di scheda, **nessun obbligo dei 12 tester**. Il rapporto
-  fatica/risultato migliore.
-- **Amazon Appstore**: gratuito, accetta l'APK, pubblico piccolo. Costa poco una volta che i
-  materiali esistono.
+Il grosso del lavoro — keystore, build di release, privacy policy, Release ODbL, testi e immagini
+della scheda — è **comune a tutti**: si fa una volta sola, e non dipende da quale store si sceglie.
+Le differenze sono solo su cosa ciascuno pretende in più. Da qui l'ordine:
+
+1. **Google Play è la destinazione**, perché è dove sta il pubblico. Ma l'account e la verifica
+  d'identità vanno aperti **subito, per primi**, prima ancora di toccare il codice: fra verifica e
+  i 14 giorni di test chiuso con 12 tester (Fase 1) passano settimane che nessuna riga di codice
+  accorcia. È anche l'unico store dove il peso di Fase 4 diventa un problema strutturale.
+2. **Galaxy Store come prima uscita vera**, mentre quei giorni passano. Account gratuito,
+  requisiti più leggeri, accetta l'APK, stessi materiali di scheda, **nessun obbligo dei 12
+  tester** e limiti di dimensione molto più larghi — cioè si può pubblicare *senza* aver prima
+  risolto Play Asset Delivery. Coerente col dispositivo di riferimento del progetto. Il rapporto
+  fatica/risultato migliore, e serve anche da collaudo dei materiali prima che li veda Play.
+3. **Amazon Appstore** per ultimo: gratuito, accetta l'APK, pubblico piccolo. Una volta che i
+  materiali esistono costa quasi nulla aggiungerlo.
+
+Gli scartati, per non ripensarci ogni volta:
 - **F-Droid**: nello spirito del progetto, ma compila **dai sorgenti** nella propria
   infrastruttura: i dati versionati sarebbero blob binari da rigenerare in build, e la pipeline
   scarica 2,19 GB. Solo accettando di riscrivere la build.
-- **App Store di Apple**: fuori portata — 99 $ l'anno e una shell da riscrivere. Il globo nella
-  WebView si porterebbe dietro, tutta l'interfaccia Compose no.
+- **App Store di Apple**: fuori portata — 99 $ l'anno e una shell da riscrivere. Non esiste
+  nessun progetto iOS qui dentro. Il globo nella WebView si porterebbe dietro, tutta
+  l'interfaccia Compose no.
 
 ## Cose che non servono, per non cercarle
 

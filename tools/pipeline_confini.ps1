@@ -66,6 +66,11 @@ try {
   $env:CONFINI_WORK_DIR = $confini
   & node --max-old-space-size=4096 (Join-Path $PSScriptRoot 'prepara_confini.js')
   if ($LASTEXITCODE -ne 0) { throw 'prepara_confini.js e uscito con errore' }
+  # I nomi dei paesi nelle lingue dell'app, dal countries.geojson appena scritto.
+  # Qui e non a mano: e' una tabella derivata da quel file, e se i due si
+  # separano l'app mostra un nome tradotto per un paese che non c'e' piu'.
+  & node (Join-Path $PSScriptRoot 'nomi_paesi.js')
+  if ($LASTEXITCODE -ne 0) { throw 'nomi_paesi.js e uscito con errore' }
 } finally {
   $env:CONFINI_DATA_DIR = $previousData
   $env:CONFINI_WORK_DIR = $previousWork

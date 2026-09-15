@@ -124,6 +124,24 @@ class PonteUi(
         }
     }
 
+    /**
+     * La lingua che l'app sta usando, due lettere: `en`, `it`.
+     *
+     * **Perche' non basta `navigator.language`.** Nella WebView quello riporta
+     * la lingua **di sistema**, mentre da Android 13 l'utente puo' scegliere
+     * una lingua diversa solo per questa app — e' il selettore che
+     * `res/xml/locales_config.xml` abilita. In quel caso le due cose divergono,
+     * e senza questo metodo la mappa mostrerebbe i nomi dei paesi in una lingua
+     * e l'interfaccia nativa nell'altra.
+     *
+     * `Locale.getDefault()` e non una preferenza nostra: e' il locale che
+     * Android ha gia' risolto per il processo, quindi risponde al telefono e al
+     * selettore per-app con la stessa regola con cui `values-it/` viene scelto.
+     * Sincrono di proposito: la pagina lo chiede prima di caricare i nomi.
+     */
+    @JavascriptInterface
+    fun lingua(): String = java.util.Locale.getDefault().language
+
     /** La mappa segnala che si e' toccato il vuoto: la scheda si chiude. */
     @JavascriptInterface
     fun onDeselect() {

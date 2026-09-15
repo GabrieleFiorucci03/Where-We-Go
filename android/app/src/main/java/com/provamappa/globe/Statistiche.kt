@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -81,15 +82,16 @@ fun Statistiche(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Dove sei stato", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.stats_title), style = MaterialTheme.typography.headlineSmall)
 
             Column(
                 Modifier.clickable { onApri(Stato.VISITATA, "countries") },
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    "%d nazioni su %d — %.1f%% del mondo".format(
-                        c.nazioniVisitate, STATI_SOVRANI, percentuale * 100
+                    stringResource(
+                        R.string.stats_countries,
+                        c.nazioniVisitate, STATI_SOVRANI, percentuale * 100,
                     ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
@@ -99,34 +101,33 @@ fun Statistiche(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    "su 195 stati sovrani, non sulle 242 entità della mappa: " +
-                        "dipendenze e territori falserebbero la percentuale",
+                    stringResource(R.string.stats_countries_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Riga("Nazioni da visitare", c.nazioniInProgramma) {
+            Riga(R.string.stats_countries_wanted, c.nazioniInProgramma) {
                 onApri(Stato.IN_PROGRAMMA, "countries")
             }
-            Riga("Regioni visitate", c.regioniVisitate) { onApri(Stato.VISITATA, "regions") }
-            Riga("Regioni da visitare", c.regioniInProgramma) {
+            Riga(R.string.stats_regions_visited, c.regioniVisitate) { onApri(Stato.VISITATA, "regions") }
+            Riga(R.string.stats_regions_wanted, c.regioniInProgramma) {
                 onApri(Stato.IN_PROGRAMMA, "regions")
             }
-            Riga("Città visitate", c.cittaVisitate) { onApri(Stato.VISITATA, "places") }
-            Riga("Città da visitare", c.cittaInProgramma) { onApri(Stato.IN_PROGRAMMA, "places") }
+            Riga(R.string.stats_cities_visited, c.cittaVisitate) { onApri(Stato.VISITATA, "places") }
+            Riga(R.string.stats_cities_wanted, c.cittaInProgramma) { onApri(Stato.IN_PROGRAMMA, "places") }
         }
     }
 }
 
 @Composable
-private fun Riga(etichetta: String, valore: Int, onApri: () -> Unit) {
+private fun Riga(@androidx.annotation.StringRes etichetta: Int, valore: Int, onApri: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onApri),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
-        Text(etichetta, style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(etichetta), style = MaterialTheme.typography.bodyLarge)
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Text(
                 "%,d".format(valore),

@@ -365,6 +365,7 @@ confini, e cambia il comportamento di tutte le maschere.
 | Granularità città | Massima possibile a costo zero → GeoNames, feature class `P` (~4,8 M centri abitati) |
 | Regioni | **Opzionali, mai attive di default**: si accendono per paese, vedi §6.2 |
 | Tema | **Chiaro di default**, scuro selezionabile nelle impostazioni. Vedi §6.1 |
+| Lingua | **Nativamente inglese, si adatta al telefono** (2026-09-12). Inglese e italiano; nessun codice sceglie, sceglie Android. Vedi §9.0 |
 | Suddivisioni | **Ci si ferma alle regioni**; livello geoBoundaries scelto paese per paese. Niente province né comuni: vedi §13 e `docs/MIGRAZIONE.md` |
 | Approfondimento | Città → galleria di foto da Wikimedia Commons dentro l'app; nazioni e regioni → Chrome Custom Tab. Vedi §9.6 |
 | Distribuzione | **Store, dopo il passaggio di §14.** Fin qui è stata nessuna — APK compilato in locale e installato a mano (§4, che resta come cronologia); la pubblicazione aggiunge i requisiti elencati in §14 |
@@ -1412,20 +1413,82 @@ Questa sezione descrive **l'app vera in Compose**, non il prototipo web. Il prot
 banco di prova di mappa e dati; la sua barra laterale fissa a destra è un attrezzo da officina e
 nell'app non esiste.
 
-### 9.0 Terminologia — è normativa
+### 9.0 Terminologia e lingua — è normativa
 
-Tutto ciò che l'utente legge è in italiano, e i tre stati si chiamano **sempre** così:
+> **Cambiata il 2026-09-12.** Fino a quella data questa sezione diceva «tutto ciò che l'utente
+> legge è in italiano». Non è più vero, e la regola nuova è quella qui sotto. La riga precedente
+> resta scritta perché la decisione non è stata una svista da correggere ma un cambio di rotta:
+> l'app va su uno store mondiale, e un'app di viaggi in una lingua sola si rivolge a un ventesimo
+> del pubblico che ha davanti.
 
-| stato | come si chiama | colore |
+**L'app è nativamente in inglese e segue la lingua del telefono.** Non c'è una riga di codice che
+sceglie la lingua: c'è `res/values/strings.xml` in inglese — il default, cioè ciò che si vede
+ovunque non ci sia di meglio — e `res/values-it/strings.xml` in italiano, e Android sceglie da sé.
+`res/xml/locales_config.xml` dichiara le due lingue, il che accende anche il selettore per-app di
+Android 13: si può tenere il telefono in inglese e questa app in italiano.
+
+Aggiungere una lingua significa aggiungere una cartella `values-xx/`, una riga in
+`locales_config.xml` e una in `LINGUE` di `tools/nomi_paesi.js`. Nient'altro.
+
+**I tre stati** si chiamano sempre così:
+
+| stato | inglese | italiano | colore |
+|---|---|---|---|
+| `none` | **Not visited** | **non visitata** | rosso |
+| `wanted` | **To visit** | **da visitare** | arancio |
+| `visited` | **Visited** | **visitata** | verde |
+
+> **Le chiavi salvate restano in inglese, e non sono le etichette.** `visited` / `wanted` / `none`
+> sono i valori scritti nel database e nell'export: tradurli spezzerebbe i salvataggi esistenti e i
+> backup. Nel codice la distinzione è forzata dai tipi — `Stato.chiave` è una `String`,
+> `Stato.etichetta` è un `@StringRes Int` — quindi non si può scambiare l'una per l'altra nemmeno
+> per sbaglio. Confondere le due cose è il modo classico di perdere i dati di un utente in un
+> aggiornamento.
+
+#### Cosa si traduce e cosa no
+
+La regola non è «tradurre tutto»: per i nomi di luogo, tradurre è spesso **perdere**
+informazione.
+
+| Cosa | Lingua | Perché |
 |---|---|---|
-| `none` | **non visitata** | rosso |
-| `wanted` | **in programma** | arancio |
-| `visited` | **visitata** | verde |
+| Interfaccia (menu, schede, elenchi, licenze) | tradotta | è testo, e lo legge una persona |
+| Nomi delle **città** | forma internazionale di GeoNames — `Rome`, `Milan` | è già quella nei dati: `prepara_indice.js` usa la colonna `name`, e l'italiano c'è solo come alias di ricerca. Non serviva fare nulla |
+| Nomi delle **suddivisioni** | endonimo — `Bayern`, `Bretagne` | vengono da geoBoundaries `shapeName`: sono già nella lingua del posto, che è l'unica forma che esiste per tutte e 3.343 |
+| Nomi dei **paesi** | tradotti | erano cotti in italiano nei dati, ed è l'unico strato che è stato necessario toccare. Vedi sotto |
+| Messaggi di `Log` | italiano, nel codice | li legge chi sviluppa, non chi usa l'app: non stanno in `strings.xml` |
+| Barra laterale del prototipo (`index.html`) | italiano | è il banco di prova, e nell'app non compare (§9.1). Esce comunque dagli asset di release |
 
-> **Le chiavi salvate restano in inglese.** `visited` / `wanted` / `none` sono i valori scritti nel
-> database e nell'export: tradurli spezzerebbe i salvataggi esistenti e i backup. L'italiano vive
-> solo nello strato di presentazione. Confondere le due cose è il modo classico di perdere i dati
-> di un utente in un aggiornamento.
+#### I nomi dei paesi: una tabella sovrapposta, non una rigenerazione
+
+Il nome del paese è **cotto in italiano in tre artefatti generati**: `countries.geojson`, il campo
+`countryName` dei 3.343 file di `region-shapes`, e la tabella `nazione` di `citta.db` (57 MB).
+Tradurli alla sorgente vorrebbe dire rigenerare 205 MB di dati per cambiare 249 stringhe, e
+rifarlo a ogni lingua aggiunta.
+
+Invece `tools/nomi_paesi.js` produce `web/data/country-names.json` — **11 KB, 249 paesi** — dalle
+colonne `NAME_xx` di Natural Earth, che ne porta già una ventina di lingue ed è pubblico dominio.
+A runtime quella tabella si sovrappone al nome dei dati: `NomiPaesi.kt` lato Kotlin,
+`nomeLocalizzatoPaese` lato JavaScript. Il nome cotto resta il ripiego, quindi se il file mancasse
+l'app mostrerebbe ciò che ha sempre mostrato invece di un codice ISO.
+
+Due conseguenze che non si vedono finché non si prova:
+
+- **L'elenco delle nazioni non si ordina più in SQL.** `ORDER BY nome` ordinava sulla colonna
+  italiana: con l'app in inglese avrebbe messo Germany fra Georgia e Ghana, perché nei dati si
+  chiama «Germania». Sono 249 righe e si riordinano in memoria, dopo aver risolto il nome.
+- **La ricerca delle nazioni non si fa più in SQL.** Un `LIKE` su `nome`/`nome_ascii` non trova
+  «Germany» in un indice italiano. Ora il confronto è in memoria contro **tutte** le forme
+  conosciute, quindi chi ha il telefono in inglese e digita «Germania» la trova lo stesso — che per
+  un'app di viaggi è il caso normale, non l'eccezione.
+
+#### Come fa la WebView a sapere la lingua
+
+`navigator.language` non basta: nella WebView riporta la lingua **di sistema**, mentre il selettore
+per-app di Android 13 può averne scelta un'altra solo per questa app. Il ponte `AndroidUI` espone
+quindi `lingua()`, che restituisce `Locale.getDefault().language` — lo stesso locale con cui Android
+ha scelto `values-it/`. Nel prototipo web quel ponte non esiste e si ricade su `navigator.language`,
+che lì è l'unica fonte che ci sia.
 
 ### 9.1 Struttura dello schermo
 

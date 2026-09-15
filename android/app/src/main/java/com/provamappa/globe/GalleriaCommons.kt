@@ -1,6 +1,7 @@
 package com.provamappa.globe
 
 import android.util.Log
+import androidx.annotation.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -31,7 +32,12 @@ sealed interface Esito {
     data class Trovate(val foto: List<Foto>) : Esito
     /** Nessuna foto, ma la ricerca e' andata a buon fine: e' il caso piu' frequente. */
     data object Vuoto : Esito
-    data class Errore(val messaggio: String) : Esito
+    /**
+     * **Un id di risorsa, non una frase.** Questo file non ha un `Context` e
+     * non deve averlo: e' il livello che parla con la rete. Il testo lo risolve
+     * chi disegna, nella lingua che Android ha scelto per il telefono.
+     */
+    data class Errore(@StringRes val messaggio: Int) : Esito
 }
 
 /**
@@ -80,7 +86,7 @@ object GalleriaCommons {
      * galleria si riempie di riquadri grigi: l'elenco arriva, i titoli e le
      * distanze si vedono, le fotografie no. Vedi `SchermataGalleria`.
      */
-    const val UA = "WhereWeGo/0.6 (app personale, uso non commerciale)"
+    const val UA = "WhereWeGo/${BuildConfig.VERSION_NAME} (personal, non-commercial; https://github.com/GabrieleFiorucci03/Where-We-Go)"
 
     /** Il massimo che `gsradius` accetta. Non c'e' una scelta da fare. */
     private const val RAGGIO = 10_000
@@ -150,7 +156,7 @@ object GalleriaCommons {
             // cercare il difetto dalla parte opposta.
             radice.optJSONObject("error")?.let { e ->
                 Log.e(TAG, "l'API ha risposto con un errore: $e")
-                return@withContext Esito.Errore("Wikimedia ha rifiutato la richiesta")
+                return@withContext Esito.Errore(R.string.gallery_error_refused)
             }
 
             val pagine = radice.optJSONObject("query")?.optJSONArray("pages")
@@ -166,10 +172,10 @@ object GalleriaCommons {
             if (trovate.isEmpty()) Esito.Vuoto else Esito.Trovate(trovate)
         } catch (e: java.net.UnknownHostException) {
             Log.w(TAG, "senza rete", e)
-            Esito.Errore("Serve la rete per vedere le foto")
+            Esito.Errore(R.string.gallery_error_offline)
         } catch (e: Exception) {
             Log.e(TAG, "ricerca fallita", e)
-            Esito.Errore("Non sono riuscito a caricare le foto")
+            Esito.Errore(R.string.gallery_error_generic)
         }
     }
 
@@ -194,6 +200,11 @@ object GalleriaCommons {
             "iiprop" to "url|extmetadata",
             // senza il filtro arrivano decine di campi per foto, quasi tutti inutili
             "iiextmetadatafilter" to "Artist|LicenseShortName",
+            // I campi di `extmetadata` sono localizzati da Commons: chiedendoli
+            // nella lingua del telefono, «Own work» diventa «Opera propria» su
+            // un telefono italiano. Dove la traduzione non c'e' torna
+            // l'originale, che e' esattamente il ripiego giusto.
+            "uselang" to java.util.Locale.getDefault().language,
             // 640 e non 480: i riquadri sono quadrati e la foto viene ritagliata
             // al centro, quindi di una miniatura panoramica 640x360 restano 360
             // pixel per un riquadro che su un telefono ne occupa oltre 500. A

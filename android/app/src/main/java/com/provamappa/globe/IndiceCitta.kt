@@ -39,10 +39,18 @@ data class Voce(
  */
 class IndiceCitta(context: Context) {
 
+    /**
+     * Serve dopo l'avvio, non solo per copiare il file: le righe di contesto
+     * degli elenchi — «1.234 citta'», «nessuna citta' nell'indice» — sono
+     * risorse, e i nomi dei paesi passano da [NomiPaesi]. `applicationContext`
+     * e non quello ricevuto: questo oggetto vive quanto l'app.
+     */
+    private val app = context.applicationContext
+
     private val db: SQLiteDatabase?
 
     /** Il motivo per cui l'indice non si e' aperto, se non si e' aperto. */
-    private var errore: String = "motivo sconosciuto"
+    private var errore: String? = null
 
     init {
         db = try {
@@ -135,7 +143,10 @@ class IndiceCitta(context: Context) {
      * I numeri sono contati adesso, non scritti a mano: e' tutto il punto.
      */
     fun diagnostica(): String {
-        val d = db ?: return "indice non aperto — $errore"
+        val d = db ?: return app.getString(
+            R.string.index_not_open,
+            errore ?: app.getString(R.string.index_unknown_error),
+        )
         return try {
             fun conta(tabella: String) =
                 d.rawQuery("SELECT count(*) FROM $tabella", null).use { c ->
@@ -144,26 +155,53 @@ class IndiceCitta(context: Context) {
             val n = conta("nazione")
             val c = conta("citta")
             val f = conta("citta_fts")
-            "%,d nazioni · %,d città · %,d nell'indice di ricerca".format(n, c, f)
+            app.getString(R.string.index_ready, n, c, f)
         } catch (e: Exception) {
-            "database aperto ma illeggibile: ${e.javaClass.simpleName} — ${e.message}"
+            app.getString(
+                R.string.index_unreadable,
+                e.javaClass.simpleName,
+                e.message ?: app.getString(R.string.index_unknown_error),
+            )
         }
     }
 
 
-    /** Tutte le nazioni, in ordine alfabetico italiano. */
-    fun nazioni(): List<Voce> = interroga(
-        "SELECT codice, nome, citta, iso2 FROM nazione ORDER BY nome",
-    ) { c ->
-        val n = c.getInt(2)
-        Voce(
-            tipo = "countries",
-            codice = c.getString(0),
-            nome = c.getString(1),
-            sotto = if (n > 0) "%,d città".format(n) else "nessuna città nell'indice",
-            iso2 = c.getString(3) ?: "",
-        )
-    }
+    /** Una riga della tabella `nazione`, prima che il nome venga tradotto. */
+    private class Nazione(
+        val codice: String,
+        /** Il nome cotto nell'indice, in italiano: il ripiego se la tabella manca. */
+        val nomeDati: String,
+        val citta: Int,
+        val iso2: String,
+    )
+
+    private fun nazioniGrezze(): List<Nazione> = interroga(
+        "SELECT codice, nome, citta, iso2 FROM nazione",
+    ) { c -> Nazione(c.getString(0), c.getString(1), c.getInt(2), c.getString(3) ?: "") }
+
+    private fun Nazione.nomeVisibile(): String = NomiPaesi.di(app, codice) ?: nomeDati
+
+    /**
+     * Tutte le nazioni, in ordine alfabetico **della lingua in uso**.
+     *
+     * L'ordinamento si fa qui e non in SQL, ed e' il motivo per cui la query
+     * ha perso il suo `ORDER BY nome`: quella colonna e' in italiano, quindi
+     * ordinarci sopra darebbe un elenco inglese in ordine italiano — Germany
+     * fra Georgia e Ghana perche' nei dati si chiama «Germania». Sono 249
+     * righe, riordinarle in memoria non si misura.
+     */
+    fun nazioni(): List<Voce> = nazioniGrezze()
+        .map { n ->
+            Voce(
+                tipo = "countries",
+                codice = n.codice,
+                nome = n.nomeVisibile(),
+                sotto = if (n.citta > 0) app.getString(R.string.index_country_cities, n.citta)
+                else app.getString(R.string.index_country_no_cities),
+                iso2 = n.iso2,
+            )
+        }
+        .sortedBy { senzaAccenti(it.nome) }
 
     /**
      * Citta' di una nazione, **per popolazione decrescente** (§9.3).
@@ -182,21 +220,36 @@ class IndiceCitta(context: Context) {
         val q = testo.trim()
         if (q.length < 2) return emptyList()
 
-        // `iso2` serve: senza, aprendo una nazione trovata con la ricerca
-        // l'elenco delle sue citta' interrogava con un codice vuoto e restava
-        // vuoto — mentre dall'elenco iniziale, che l'iso2 ce l'ha, funzionava.
-        val nazioni = interroga(
-            "SELECT codice, nome, citta, iso2 FROM nazione WHERE nome LIKE ? OR nome_ascii LIKE ? ORDER BY nome LIMIT 8",
-            "%$q%", "%$q%",
-        ) { c ->
-            Voce(
-                tipo = "countries",
-                codice = c.getString(0),
-                nome = c.getString(1),
-                sotto = "nazione · %,d città".format(c.getInt(2)),
-                iso2 = c.getString(3) ?: "",
-            )
-        }
+        // **Le nazioni non si cercano piu' in SQL.** Le colonne `nome` e
+        // `nome_ascii` dell'indice sono in italiano, quindi un `LIKE` su quelle
+        // non trova «Germany» nemmeno con l'app in inglese. Sono 249 righe: si
+        // leggono tutte e si confrontano in memoria contro **ogni forma
+        // conosciuta** del nome — inglese, italiano e quella cotta nei dati.
+        //
+        // Cosi' la ricerca smette anche di dipendere dalla lingua scelta: chi ha
+        // il telefono in inglese e digita «Germania» la trova lo stesso, ed e'
+        // il caso normale per chi viaggia, non un'eccezione.
+        val cercato = senzaAccenti(q)
+        val nazioni = nazioniGrezze()
+            .filter { n ->
+                (NomiPaesi.forme(app, n.codice) + n.nomeDati)
+                    .any { senzaAccenti(it).contains(cercato) }
+            }
+            .map { n ->
+                Voce(
+                    tipo = "countries",
+                    codice = n.codice,
+                    nome = n.nomeVisibile(),
+                    // `iso2` serve: senza, aprendo una nazione trovata con la
+                    // ricerca l'elenco delle sue citta' interrogava con un
+                    // codice vuoto e restava vuoto — mentre dall'elenco
+                    // iniziale, che l'iso2 ce l'ha, funzionava.
+                    iso2 = n.iso2,
+                    sotto = app.getString(R.string.index_country_with_cities, n.citta),
+                )
+            }
+            .sortedBy { senzaAccenti(it.nome) }
+            .take(8)
 
         // Sintassi FTS4: `parola*` cerca per prefisso, cosi' "mila" trova Milano
         // gia' mentre si digita. Si ripulisce il testo da tutto cio' che per FTS
@@ -247,7 +300,7 @@ class IndiceCitta(context: Context) {
             tipo = "places",
             codice = "g:${c.getLong(0)}",   // stessa chiave che usa la mappa
             nome = c.getString(1),
-            sotto = if (pop > 0) "%,d abitanti".format(pop) else "",
+            sotto = if (pop > 0) app.getString(R.string.index_city_population, pop) else "",
             lat = c.getDouble(3),
             lon = c.getDouble(4),
         )

@@ -22,9 +22,23 @@ estrarli: sono dichiarati `noCompress` e si leggono posizionando il canale sul
 punto giusto. La ricerca fra 440.273 città passa da un **indice SQLite con FTS4**
 generato in pipeline.
 
+L'app e **nativamente in inglese e segue la lingua del telefono**: le stringhe
+stanno in `res/values/` (inglese, il default) e `res/values-it/`, e la scelta la
+fa Android, non il codice. Da Android 13 si puo anche forzare la lingua della
+sola app dal selettore di sistema. I nomi dei paesi si traducono con una tabella
+di 11 KB generata da Natural Earth; quelli di citta e regioni no, perche sono gia
+neutri — forma internazionale di GeoNames ed endonimi. Vedi §9.0 di
+[`docs/PIANO.md`](docs/PIANO.md).
+
 - **~2.160 righe di Kotlin**, 12 file
 - **~2.900 righe di JavaScript** per mappa, bandiere e stato
 - **24 script** in `tools/`, fra pipeline dei dati e strumenti di servizio
+- **2 lingue**: inglese (nativa) e italiano
+
+> I tre conteggi qui sopra erano gia scaduti prima del 2026-09-12 — i file Kotlin
+> sono 17 e gli script 49 — e non sono stati aggiornati perche non si sa con quale
+> criterio fossero stati contati. Da ricontare una volta, poi da tenere o da
+> togliere.
 
 ## I dati non sono in questo repository
 
@@ -97,6 +111,7 @@ quello.
 
 ```
 android/          l'app: Kotlin + Compose, la WebView e i due ponti
+  res/values/     le stringhe in inglese (il default) e in values-it/ l'italiano
 web/              la mappa: MapLibre, bandiere, stato dell'utente
   vendor/         MapLibre GL JS e pmtiles.js
   flags/          255 bandiere SVG (flag-icons)

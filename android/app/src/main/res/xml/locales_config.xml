@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Le lingue che l'app dichiara di parlare.
+
+  Serve a due cose distinte:
+  - da Android 13 in poi il sistema mostra **Impostazioni › App › Where We Go ›
+    Lingua**, cioe' il selettore per-app: chi tiene il telefono in inglese ma
+    vuole l'app in italiano (o viceversa) puo' sceglierlo senza cambiare la
+    lingua del telefono;
+  - la prima voce e' la lingua di default dell'app, quella usata quando nessuna
+    delle altre corrisponde al telefono.
+
+  L'ordine conta: `en` per primo perche' e' il default (values/strings.xml).
+  Aggiungendo una traduzione va aggiunta anche qui, altrimenti esiste nei
+  file ma non compare nel selettore.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="it" />
+</locale-config>

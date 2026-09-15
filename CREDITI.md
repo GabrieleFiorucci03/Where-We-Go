@@ -58,7 +58,7 @@ I 450.848 punti città e i loro nomi alternativi vengono da `allCountries.txt`.
 La licenza consente la ridistribuzione **con attribuzione**: chi pubblica i dati
 derivati (i tile `cities.pmtiles`, l'indice `citta.db`) deve citare GeoNames.
 
-### Natural Earth — confini nazionali e ripieghi regionali
+### Natural Earth — confini nazionali, ripieghi regionali e nomi dei paesi
 
 <https://www.naturalearthdata.com> — **pubblico dominio**
 
@@ -66,6 +66,15 @@ Pubblico dominio. È la fonte dei confini nazionali di riferimento e dei 37 ripi
 senza suddivisioni regionali disponibili. È usato anche per i 15 territori elencati
 nell'appendice delle licenze regionali, nei quali geoBoundaries non offre il
 livello editoriale scelto.
+
+Dal 2026-09-12 è anche la fonte dei **nomi dei paesi nelle lingue dell'app**: le
+colonne `NAME_xx` di Admin 0 1:50m ne portano una ventina, e `tools/nomi_paesi.js`
+ne estrae inglese e italiano in `web/data/country-names.json` (249 paesi, 11 KB).
+Sette entità che Natural Earth non elenca come paesi a sé — i dipartimenti
+d'oltremare francesi, i Paesi Bassi caraibici, le Svalbard — hanno il nome scritto
+esplicitamente in quello script, e così i due casi in cui Natural Earth usa il nome
+ufficiale dello stato invece di quello corrente (Cina, Cipro del Nord). Essendo
+pubblico dominio non aggiunge obblighi a quelli già dichiarati qui sopra.
 
 ### Wikimedia Commons — le fotografie della galleria
 

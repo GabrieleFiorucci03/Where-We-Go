@@ -1,5 +1,6 @@
 package com.provamappa.globe
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -32,21 +33,32 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 
-/** I tre stati, con il nome che l'utente legge (§9.0). Le chiavi restano inglesi. */
-enum class Stato(val chiave: String, val etichetta: String, val colore: Color) {
-    NON_VISITATA("none", "Non visitata", Color(0xFFD33333)),
-    // "Da visitare" e non "in programma" come in §9.0: sul pulsante dice cosa si
+/**
+ * I tre stati (§9.0).
+ *
+ * **Due nomi per la stessa cosa, e devono restare distinti.** [chiave] e' cio'
+ * che si salva — `none`, `wanted`, `visited` — e non si traduce mai: e' il
+ * formato dei backup e del `localStorage`, e cambiarla renderebbe illeggibili i
+ * dati di prima. [etichetta] e' cio' che si legge sul pulsante, quindi e' un
+ * id di risorsa e non una stringa: la lingua la sceglie Android in base al
+ * telefono, e qui non si decide niente.
+ */
+enum class Stato(val chiave: String, @StringRes val etichetta: Int, val colore: Color) {
+    NON_VISITATA("none", R.string.state_unvisited, Color(0xFFD33333)),
+    // «Da visitare» e non «in programma» come in §9.0: sul pulsante dice cosa si
     // sta per fare invece di nominare uno stato, ed e' la coppia naturale di
-    // "Visitata" accanto. La chiave salvata resta `wanted`, quindi i backup e i
+    // «Visitata» accanto. La chiave salvata resta `wanted`, quindi i backup e i
     // dati di prima continuano a leggersi.
-    IN_PROGRAMMA("wanted", "Da visitare", Color(0xFFF08A24)),
-    VISITATA("visited", "Visitata", Color(0xFF2E9E4F));
+    IN_PROGRAMMA("wanted", R.string.state_wanted, Color(0xFFF08A24)),
+    VISITATA("visited", R.string.state_visited, Color(0xFF2E9E4F));
 
     companion object {
         fun da(chiave: String) = entries.firstOrNull { it.chiave == chiave } ?: NON_VISITATA
@@ -118,7 +130,7 @@ fun SchedaSelezione(
                         }
                     }
                     IconButton(onClick = onChiudi) {
-                        Icon(Icons.Filled.Close, contentDescription = "Chiudi")
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
                     }
                 }
 
@@ -131,7 +143,7 @@ fun SchedaSelezione(
                         FilterChip(
                             selected = stato == attuale,
                             onClick = { onImposta(stato) },
-                            label = { Text(stato.etichetta, maxLines = 1) },
+                            label = { Text(stringResource(stato.etichetta), maxLines = 1) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = stato.colore,
                                 selectedLabelColor = Color.White,
@@ -153,7 +165,7 @@ fun SchedaSelezione(
                         contentDescription = null,
                         modifier = Modifier.padding(end = 8.dp),
                     )
-                    Text("Guarda com'è — richiede la rete")
+                    Text(stringResource(R.string.card_explore))
                 }
 
                 // Il dettaglio regionale si accendeva con una pressione
@@ -170,9 +182,17 @@ fun SchedaSelezione(
                             contentDescription = null,
                             modifier = Modifier.padding(end = 8.dp),
                         )
+                        // `pluralStringResource` e non un'interpolazione: una
+                        // nazione con una sola suddivisione esiste, e «Mostra le
+                        // 1 regioni» si legge male in ogni lingua. Quale forma
+                        // usare per quale numero lo sa Android, non noi.
                         Text(
-                            if (s.regioniAccese) "Nascondi le ${s.numeroRegioni} regioni"
-                            else "Mostra le ${s.numeroRegioni} regioni"
+                            pluralStringResource(
+                                if (s.regioniAccese) R.plurals.card_hide_regions
+                                else R.plurals.card_show_regions,
+                                s.numeroRegioni,
+                                s.numeroRegioni,
+                            )
                         )
                     }
                 }

@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.withContext
@@ -102,8 +103,10 @@ class MainActivity : ComponentActivity() {
                 ) { uri ->
                     if (uri == null) return@rememberLauncherForActivityResult
                     esporta { json ->
-                        avviso = if (Backup.scrivi(contesto, uri, json)) "Backup salvato"
-                        else "Backup non riuscito"
+                        avviso = contesto.getString(
+                            if (Backup.scrivi(contesto, uri, json)) R.string.backup_saved
+                            else R.string.backup_failed
+                        )
                     }
                 }
                 val apri = rememberLauncherForActivityResult(
@@ -112,7 +115,7 @@ class MainActivity : ComponentActivity() {
                     if (uri == null) return@rememberLauncherForActivityResult
                     val json = Backup.leggi(contesto, uri)
                     if (json == null) {
-                        avviso = "File non leggibile"
+                        avviso = contesto.getString(R.string.backup_file_unreadable)
                         return@rememberLauncherForActivityResult
                     }
                     ripristina(json) { esito -> avviso = esito }
@@ -124,10 +127,12 @@ class MainActivity : ComponentActivity() {
                     val b64 = immagine
                     immagine = null
                     if (uri == null || b64.isNullOrEmpty()) return@rememberLauncherForActivityResult
-                    avviso = if (Backup.scriviBinario(
-                            contesto, uri, android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
-                        )
-                    ) "Immagine salvata" else "Immagine non salvata"
+                    avviso = contesto.getString(
+                        if (Backup.scriviBinario(
+                                contesto, uri, android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                            )
+                        ) R.string.image_saved else R.string.image_not_saved
+                    )
                 }
 
                 // appena l'immagine arriva dal ponte si apre il selettore: la
@@ -234,17 +239,21 @@ class MainActivity : ComponentActivity() {
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         FilledTonalIconButton(onClick = { elenchiAperti = true }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Cerca")
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.action_search))
                         }
                         FilledTonalIconButton(onClick = { menuAperto = true }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                            Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.action_menu))
                         }
                     }
 
                     if (menuAperto) {
                         // contato all'apertura e non a ogni ricomposizione: sono
                         // tre `count(*)`, rapidi ma pur sempre letture da disco
-                        var statoIndice by remember { mutableStateOf("controllo l'indice…") }
+                        // `stringResource` fuori dal `remember`: e' una
+                        // funzione @Composable e dentro quel blocco non si puo'
+                        // chiamare.
+                        val inAttesa = stringResource(R.string.index_checking)
+                        var statoIndice by remember { mutableStateOf(inAttesa) }
                         LaunchedEffect(Unit) {
                             statoIndice = withContext(kotlinx.coroutines.Dispatchers.IO) {
                                 indice.diagnostica()
@@ -387,15 +396,19 @@ class MainActivity : ComponentActivity() {
             val esito = runCatching { org.json.JSONObject(testo ?: "") }.getOrNull()
             poi(
                 if (esito?.optBoolean("ok") == true) {
-                    val base = "Ripristinati ${esito.optInt("nazioni")} nazioni, " +
-                        "${esito.optInt("regioni")} regioni, ${esito.optInt("citta")} città"
+                    val base = getString(
+                        R.string.restore_done,
+                        esito.optInt("nazioni"), esito.optInt("regioni"), esito.optInt("citta"),
+                    )
                     val rimappate = esito.optInt("regioniRimappate")
                     val scartate = esito.optInt("regioniScartate")
                     if (rimappate > 0 || scartate > 0) {
-                        "$base ($rimappate regioni convertite, $scartate senza equivalenza)"
+                        getString(R.string.restore_done_remapped, base, rimappate, scartate)
                     } else base
                 } else {
-                    "Ripristino non riuscito: ${esito?.optString("errore") ?: "file non valido"}"
+                    val motivo = esito?.optString("errore")?.takeIf { it.isNotEmpty() }
+                        ?: getString(R.string.restore_invalid_file)
+                    getString(R.string.restore_failed, motivo)
                 }
             )
         }

@@ -1,7 +1,175 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  La lingua **nativa** dell'app: l'inglese.
+
+  Questo file e' il default, cioe' cio' che si vede su un telefono impostato in
+  una qualunque lingua per cui non esiste una traduzione. `values-it/` contiene
+  l'italiano, che il sistema sceglie da solo quando il telefono e' in italiano:
+  nessuna riga di codice decide la lingua, la sceglie Android.
+
+  Regole per chi aggiunge una stringa:
+  - qui l'inglese, in `values-it/` l'italiano, con la **stessa chiave**;
+  - gli argomenti sono sempre posizionali (`%1$s`, non `%s`): in un'altra lingua
+    l'ordine delle parole cambia, e senza indice non si puo' spostarli;
+  - `%1$,d` raggruppa le migliaia secondo il locale — 1,378,689 in inglese,
+    1.378.689 in italiano — e non va sostituito con una formattazione a mano;
+  - i messaggi di `Log` restano in italiano nel codice e non stanno qui: li
+    legge chi sviluppa, non chi usa l'app.
+-->
 <resources>
     <!-- Il nome sotto l'icona nel telefono. §0 del piano dice «Where We Go»;
          il manifest ha detto «Mappamondo» fino alla M7. Non e' tradotto: e' il
-         nome dell'app, non una frase. -->
+         nome dell'app, non una frase — infatti non compare in values-it/. -->
     <string name="app_name">Where We Go</string>
+
+    <!-- ==================== Azioni ricorrenti ==================== -->
+    <string name="action_close">Close</string>
+    <string name="action_back">Back</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_search">Search</string>
+    <string name="action_menu">Menu</string>
+    <string name="action_open_link">Open link</string>
+
+    <!-- ==================== I tre stati ====================
+         Le chiavi salvate restano `none`/`wanted`/`visited` e non si traducono:
+         qui c'e' solo cio' che si legge sul pulsante. -->
+    <string name="state_unvisited">Not visited</string>
+    <!-- Sul pulsante dice cosa si sta per fare, invece di nominare uno stato:
+         e' la coppia naturale di «Visited» accanto. -->
+    <string name="state_wanted">To visit</string>
+    <string name="state_visited">Visited</string>
+
+    <!-- ==================== Menu ==================== -->
+    <string name="menu_search_title">Search for a city or a country</string>
+    <string name="menu_countries_title">List of countries</string>
+    <string name="menu_stats_title">Statistics</string>
+    <string name="menu_stats_subtitle">How much of the world you have seen</string>
+    <string name="menu_image_title">Save the globe as an image</string>
+    <string name="menu_image_subtitle">A PNG of what you see right now</string>
+    <string name="menu_backup_title">Save a backup</string>
+    <string name="menu_backup_subtitle">A JSON file, wherever you like</string>
+    <string name="menu_restore_title">Restore from a backup</string>
+    <string name="menu_restore_subtitle">Replaces everything you have marked</string>
+    <string name="menu_about_title">About and licences</string>
+    <string name="menu_about_subtitle">Sources, attributions and privacy</string>
+
+    <!-- ==================== Scheda di selezione ==================== -->
+    <string name="card_explore">See what it looks like — needs a connection</string>
+    <!-- Una nazione con una sola suddivisione esiste, quindi serve il singolare. -->
+    <plurals name="card_show_regions">
+        <item quantity="one">Show the %d region</item>
+        <item quantity="other">Show the %d regions</item>
+    </plurals>
+    <plurals name="card_hide_regions">
+        <item quantity="one">Hide the %d region</item>
+        <item quantity="other">Hide the %d regions</item>
+    </plurals>
+
+    <!-- ==================== Elenchi e ricerca ==================== -->
+    <string name="search_anywhere">Search anywhere</string>
+    <string name="list_no_results">No results</string>
+    <string name="list_no_entries">Nothing here</string>
+
+    <!-- ==================== Elenco di cio' che si e' marcato ==================== -->
+    <string name="marked_title">What you have marked</string>
+    <string name="marked_empty">Nothing marked here</string>
+    <string name="marked_filter_all">All</string>
+    <string name="type_countries">Countries</string>
+    <string name="type_regions">Regions</string>
+    <string name="type_cities">Cities</string>
+
+    <!-- ==================== Statistiche ==================== -->
+    <string name="stats_title">Where you have been</string>
+    <string name="stats_countries">%1$d countries out of %2$d — %3$.1f%% of the world</string>
+    <string name="stats_countries_note">out of 195 sovereign states, not the 242 entities on the map: dependencies and territories would distort the percentage</string>
+    <string name="stats_countries_wanted">Countries to visit</string>
+    <string name="stats_regions_visited">Regions visited</string>
+    <string name="stats_regions_wanted">Regions to visit</string>
+    <string name="stats_cities_visited">Cities visited</string>
+    <string name="stats_cities_wanted">Cities to visit</string>
+
+    <!-- ==================== Indice: righe e diagnostica ====================
+         La diagnostica la legge l\'utente sotto le voci del menu: quando
+         l\'indice non si apre, elenchi e ricerca restano vuoti e senza questa
+         riga sembrerebbero semplicemente senza risultati. -->
+    <string name="index_checking">checking the index…</string>
+    <string name="index_unknown_error">reason unknown</string>
+    <string name="index_not_open">index not open — %1$s</string>
+    <string name="index_ready">%1$,d countries · %2$,d cities · %3$,d in the search index</string>
+    <string name="index_unreadable">database open but unreadable: %1$s — %2$s</string>
+    <string name="index_country_cities">%1$,d cities</string>
+    <string name="index_country_no_cities">no cities in the index</string>
+    <string name="index_country_with_cities">country · %1$,d cities</string>
+    <string name="index_city_population">%1$,d inhabitants</string>
+    <string name="subtitle_country">country</string>
+    <string name="subtitle_region">region</string>
+
+    <!-- ==================== Avvisi di backup e immagine ==================== -->
+    <string name="backup_saved">Backup saved</string>
+    <string name="backup_failed">Backup failed</string>
+    <string name="backup_file_unreadable">File not readable</string>
+    <string name="image_saved">Image saved</string>
+    <string name="image_not_saved">Image not saved</string>
+    <string name="restore_done">Restored %1$d countries, %2$d regions, %3$d cities</string>
+    <string name="restore_done_remapped">%1$s (%2$d regions converted, %3$d with no equivalent)</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
+    <string name="restore_invalid_file">invalid file</string>
+
+    <!-- ==================== Galleria di Wikimedia Commons ==================== -->
+    <string name="gallery_empty_title">No photos here</string>
+    <string name="gallery_empty_body">Wikimedia Commons has no geotagged photographs within 10 km of %1$s. That does not mean there is nothing to see: coverage on Commons is excellent in Europe and the United States, and very thin elsewhere.</string>
+    <string name="gallery_error_title">That did not work</string>
+    <string name="gallery_error_refused">Wikimedia refused the request</string>
+    <string name="gallery_error_offline">You need a connection to see the photos</string>
+    <string name="gallery_error_generic">The photos could not be loaded</string>
+    <string name="gallery_web">Search the web — opens the browser</string>
+    <string name="gallery_only_around">Only in the surrounding area</string>
+    <string name="gallery_around">In the surrounding area</string>
+
+    <!-- ==================== Informazioni e licenze ====================
+         Sezione delicata: sono gli obblighi di attribuzione delle fonti, non
+         testo di contorno. Una traduzione che cambia il senso di «accesso al
+         database derivato» cambia cio' che l\'app dichiara di fare. -->
+    <string name="about_title">About and licences</string>
+    <string name="about_intro">An offline globe for marking the countries, regions and cities you have been to. This page collects the attributions the sources require.</string>
+
+    <string name="about_geo_section">Geographic data</string>
+    <string name="about_geo_boundaries">Regional subdivisions: geoBoundaries gbOpen (198 countries or territories), with the level chosen country by country. The data has been simplified, renamed and turned into PMTiles tiles. geoBoundaries requires attribution; the national sources declared in the metadata keep their own licence: 82 ODbL datasets and 14 CC BY-SA.</string>
+    <string name="about_geo_boundaries_link">geoBoundaries — licence and citation</string>
+    <string name="about_geo_share">For ODbL and CC BY-SA, commercial redistribution is permitted, but attribution, a link to the licence, an indication of the changes made, and access to a copy of the derived database or to the machine-readable method behind it all remain required.</string>
+    <string name="about_geo_odbl_link">ODbL 1.0 text</string>
+    <string name="about_geo_ccbysa_link">CC BY-SA 4.0 text</string>
+    <string name="about_geo_derived">Access to the derived database is satisfied by publishing the data the app actually uses: one file per country, each with its own source, its own licence, the URL of the original and the list of changes applied. The scripts that produce them are in the repository.</string>
+    <string name="about_geo_derived_link">Derived data — archive, manifest and SHA-256</string>
+    <string name="about_geo_naturalearth">Reference national borders and 14 regional fallbacks: Natural Earth, public domain. The outlines of countries that have regions available are derived from the union of those regions and keep the provenance and licence of the relevant source, as stated in the derived data package.</string>
+    <string name="about_geo_naturalearth_link">Natural Earth — terms of use</string>
+
+    <string name="about_cities_section">Cities and names</string>
+    <string name="about_cities">The city index comes from GeoNames allCountries. It is distributed under a Creative Commons Attribution licence: the attribution to GeoNames is preserved on this page. City names are shown in the international form GeoNames publishes; the search also accepts local and alternative names.</string>
+    <string name="about_cities_link">GeoNames — terms and attribution</string>
+
+    <string name="about_libs_section">Libraries and bundled resources</string>
+    <string name="about_libs_intro">The project code is MIT. The third-party resources included are:</string>
+    <string name="about_libs_maplibre">MapLibre GL JS — BSD-3-Clause (MapLibre contributors and the components named in the licence text).</string>
+    <string name="about_libs_pmtiles">pmtiles.js — BSD-3-Clause (Protomaps; the PMTiles specification is public domain/CC0 where applicable).</string>
+    <string name="about_libs_flags">flag-icons — MIT, copyright Panayiotis Lipiridis.</string>
+    <string name="about_libs_noto">Noto Sans glyphs — SIL Open Font License 1.1.</string>
+    <string name="about_libs_android">Compose, AndroidX, WebKit, Browser, Kotlin Coroutines and Coil — Apache License 2.0, or the licences declared by the respective artifacts.</string>
+    <string name="about_libs_texts">The full licence texts for the JavaScript, the flags and the fonts are included in the app assets. Detailed attributions for each regional source are published in the project repository.</string>
+    <string name="about_libs_repo_link">Repository and full attributions</string>
+    <string name="about_libs_maplibre_link">MapLibre GL JS — licence</string>
+    <string name="about_libs_pmtiles_link">Protomaps PMTiles — licence</string>
+    <string name="about_libs_flags_link">flag-icons — licence</string>
+    <string name="about_libs_noto_link">Noto Sans — SIL OFL</string>
+
+    <string name="about_photos_section">Photographs</string>
+    <string name="about_photos">The gallery uses Wikimedia Commons only when you open it. The photos are not bundled in the app: for each result the author and licence are shown, and tapping opens the original page on Commons. Requirements may vary from file to file.</string>
+    <string name="about_photos_link">Commons — reusing content</string>
+
+    <string name="about_privacy_section">Privacy and network</string>
+    <string name="about_privacy">Countries, regions, cities and preferences stay on the device. The app requires no account, and carries no advertising or analytics. The network is used only for the Wikimedia Commons gallery and for the browser when you choose to look something up; Wikimedia receives the HTTP request and the IP address according to its own policies.</string>
+    <string name="about_privacy_link">Wikimedia — privacy policy</string>
+
+    <string name="about_disputed">Disputed borders: the map shows what each country\'s source declares, and the sources do not agree with one another. Where they contradict each other — Kashmir, Crimea, Cyprus, Taiwan, Palestine, Western Sahara — Where We Go does not choose and does not intend to take a position.</string>
+    <string name="about_accuracy">Accuracy: the geographic data is provided as made available by the sources; Where We Go does not guarantee the completeness or precision of the borders.</string>
 </resources>

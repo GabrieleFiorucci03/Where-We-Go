@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  L'italiano: quello che si vede su un telefono impostato in italiano.
+
+  Il default e' l'inglese, in `values/strings.xml`. Le chiavi sono le stesse e
+  vanno tenute allineate: una chiave che manca qui non e' un errore di
+  compilazione, semplicemente quella riga esce in inglese.
+
+  `app_name` non c'e' apposta: e' il nome dell'app, non una frase da tradurre.
+-->
+<resources>
+    <!-- ==================== Azioni ricorrenti ==================== -->
+    <string name="action_close">Chiudi</string>
+    <string name="action_back">Indietro</string>
+    <string name="action_clear">Pulisci</string>
+    <string name="action_search">Cerca</string>
+    <string name="action_menu">Menu</string>
+    <string name="action_open_link">Apri collegamento</string>
+
+    <!-- ==================== I tre stati ==================== -->
+    <string name="state_unvisited">Non visitata</string>
+    <!-- «Da visitare» e non «in programma» come in §9.0: sul pulsante dice cosa
+         si sta per fare invece di nominare uno stato, ed e' la coppia naturale
+         di «Visitata» accanto. La chiave salvata resta `wanted`. -->
+    <string name="state_wanted">Da visitare</string>
+    <string name="state_visited">Visitata</string>
+
+    <!-- ==================== Menu ==================== -->
+    <string name="menu_search_title">Cerca una città o una nazione</string>
+    <string name="menu_countries_title">Elenco delle nazioni</string>
+    <string name="menu_stats_title">Statistiche</string>
+    <string name="menu_stats_subtitle">Quanto mondo hai visto</string>
+    <string name="menu_image_title">Salva l\'immagine del globo</string>
+    <string name="menu_image_subtitle">Un PNG di come si vede adesso</string>
+    <string name="menu_backup_title">Salva un backup</string>
+    <string name="menu_backup_subtitle">Un file JSON, dove vuoi tu</string>
+    <string name="menu_restore_title">Ripristina da un backup</string>
+    <string name="menu_restore_subtitle">Sostituisce tutto ciò che hai segnato</string>
+    <string name="menu_about_title">Informazioni e licenze</string>
+    <string name="menu_about_subtitle">Fonti, attribuzioni e privacy</string>
+
+    <!-- ==================== Scheda di selezione ==================== -->
+    <string name="card_explore">Guarda com\'è — richiede la rete</string>
+    <plurals name="card_show_regions">
+        <item quantity="one">Mostra la %d regione</item>
+        <item quantity="other">Mostra le %d regioni</item>
+    </plurals>
+    <plurals name="card_hide_regions">
+        <item quantity="one">Nascondi la %d regione</item>
+        <item quantity="other">Nascondi le %d regioni</item>
+    </plurals>
+
+    <!-- ==================== Elenchi e ricerca ==================== -->
+    <string name="search_anywhere">Cerca ovunque</string>
+    <string name="list_no_results">Nessun risultato</string>
+    <string name="list_no_entries">Nessuna voce</string>
+
+    <!-- ==================== Elenco di cio' che si e' marcato ==================== -->
+    <string name="marked_title">Cosa hai segnato</string>
+    <string name="marked_empty">Niente di segnato qui</string>
+    <string name="marked_filter_all">Tutte</string>
+    <string name="type_countries">Nazioni</string>
+    <string name="type_regions">Regioni</string>
+    <string name="type_cities">Città</string>
+
+    <!-- ==================== Statistiche ==================== -->
+    <string name="stats_title">Dove sei stato</string>
+    <string name="stats_countries">%1$d nazioni su %2$d — %3$.1f%% del mondo</string>
+    <string name="stats_countries_note">su 195 stati sovrani, non sulle 242 entità della mappa: dipendenze e territori falserebbero la percentuale</string>
+    <string name="stats_countries_wanted">Nazioni da visitare</string>
+    <string name="stats_regions_visited">Regioni visitate</string>
+    <string name="stats_regions_wanted">Regioni da visitare</string>
+    <string name="stats_cities_visited">Città visitate</string>
+    <string name="stats_cities_wanted">Città da visitare</string>
+
+    <!-- ==================== Indice: righe e diagnostica ==================== -->
+    <string name="index_checking">controllo l\'indice…</string>
+    <string name="index_unknown_error">motivo sconosciuto</string>
+    <string name="index_not_open">indice non aperto — %1$s</string>
+    <string name="index_ready">%1$,d nazioni · %2$,d città · %3$,d nell\'indice di ricerca</string>
+    <string name="index_unreadable">database aperto ma illeggibile: %1$s — %2$s</string>
+    <string name="index_country_cities">%1$,d città</string>
+    <string name="index_country_no_cities">nessuna città nell\'indice</string>
+    <string name="index_country_with_cities">nazione · %1$,d città</string>
+    <string name="index_city_population">%1$,d abitanti</string>
+    <string name="subtitle_country">nazione</string>
+    <string name="subtitle_region">regione</string>
+
+    <!-- ==================== Avvisi di backup e immagine ==================== -->
+    <string name="backup_saved">Backup salvato</string>
+    <string name="backup_failed">Backup non riuscito</string>
+    <string name="backup_file_unreadable">File non leggibile</string>
+    <string name="image_saved">Immagine salvata</string>
+    <string name="image_not_saved">Immagine non salvata</string>
+    <string name="restore_done">Ripristinati %1$d nazioni, %2$d regioni, %3$d città</string>
+    <string name="restore_done_remapped">%1$s (%2$d regioni convertite, %3$d senza equivalenza)</string>
+    <string name="restore_failed">Ripristino non riuscito: %1$s</string>
+    <string name="restore_invalid_file">file non valido</string>
+
+    <!-- ==================== Galleria di Wikimedia Commons ==================== -->
+    <string name="gallery_empty_title">Nessuna foto qui</string>
+    <string name="gallery_empty_body">Wikimedia Commons non ha fotografie geolocalizzate entro 10 km da %1$s. Non vuol dire che non ci sia niente da vedere: la copertura di Commons è ottima in Europa e negli Stati Uniti, molto scarsa altrove.</string>
+    <string name="gallery_error_title">Non ha funzionato</string>
+    <string name="gallery_error_refused">Wikimedia ha rifiutato la richiesta</string>
+    <string name="gallery_error_offline">Serve la rete per vedere le foto</string>
+    <string name="gallery_error_generic">Non sono riuscito a caricare le foto</string>
+    <string name="gallery_web">Cerca sul web — apre il browser</string>
+    <string name="gallery_only_around">Solo nei dintorni</string>
+    <string name="gallery_around">Nei dintorni</string>
+
+    <!-- ==================== Informazioni e licenze ==================== -->
+    <string name="about_title">Informazioni e licenze</string>
+    <string name="about_intro">Un mappamondo offline per segnare paesi, regioni e città. Questa pagina raccoglie le attribuzioni richieste dalle fonti.</string>
+
+    <string name="about_geo_section">Dati geografici</string>
+    <string name="about_geo_boundaries">Suddivisioni regionali: geoBoundaries gbOpen (198 paesi o territori), con il livello scelto paese per paese. I dati sono stati semplificati, rinominati e trasformati in tile PMTiles. geoBoundaries richiede attribuzione; le fonti nazionali dichiarate nei metadati conservano la propria licenza: 82 dataset ODbL e 14 CC BY-SA.</string>
+    <string name="about_geo_boundaries_link">geoBoundaries — licenza e citazione</string>
+    <string name="about_geo_share">Per ODbL e CC BY-SA la ridistribuzione commerciale è permessa, ma restano necessari attribuzione, collegamento alla licenza, indicazione delle modifiche e accesso a una copia o al metodo macchina-leggibile del database derivato.</string>
+    <string name="about_geo_odbl_link">Testo ODbL 1.0</string>
+    <string name="about_geo_ccbysa_link">Testo CC BY-SA 4.0</string>
+    <string name="about_geo_derived">L\'accesso al database derivato è assolto pubblicando i dati che l\'app usa: un file per paese, ciascuno con la propria fonte, la propria licenza, l\'URL dell\'originale e l\'elenco delle modifiche. Gli script che li producono stanno nel repository.</string>
+    <string name="about_geo_derived_link">Dati derivati — archivio, manifest e SHA-256</string>
+    <string name="about_geo_naturalearth">Confini nazionali di riferimento e 14 ripieghi regionali: Natural Earth, pubblico dominio. I contorni dei paesi con regioni disponibili sono ricavati dalla loro unione e mantengono la provenienza e la licenza della relativa fonte, indicate nel pacchetto dei dati derivati.</string>
+    <string name="about_geo_naturalearth_link">Natural Earth — termini d\'uso</string>
+
+    <string name="about_cities_section">Città e nomi</string>
+    <string name="about_cities">L\'indice delle città deriva da GeoNames allCountries. È distribuito con licenza Creative Commons Attribution: l\'attribuzione a GeoNames è conservata in questa pagina. I nomi delle città sono mostrati nella forma internazionale pubblicata da GeoNames; la ricerca accetta anche i nomi locali e alternativi.</string>
+    <string name="about_cities_link">GeoNames — condizioni e attribuzione</string>
+
+    <string name="about_libs_section">Librerie e risorse incluse</string>
+    <string name="about_libs_intro">Il codice del progetto è MIT. Le risorse di terzi incluse sono:</string>
+    <string name="about_libs_maplibre">MapLibre GL JS — BSD-3-Clause (MapLibre contributors e componenti indicati nel testo della licenza).</string>
+    <string name="about_libs_pmtiles">pmtiles.js — BSD-3-Clause (Protomaps; la specifica PMTiles è public domain/CC0 dove applicabile).</string>
+    <string name="about_libs_flags">flag-icons — MIT, copyright Panayiotis Lipiridis.</string>
+    <string name="about_libs_noto">Glifi Noto Sans — SIL Open Font License 1.1.</string>
+    <string name="about_libs_android">Compose, AndroidX, WebKit, Browser, Kotlin Coroutines e Coil — Apache License 2.0 o licenze dichiarate dai rispettivi artefatti.</string>
+    <string name="about_libs_texts">I testi completi delle licenze JavaScript, delle bandiere e dei font sono inclusi negli asset dell\'app. Le attribuzioni dettagliate per ciascuna fonte regionale sono pubblicate nel repository del progetto.</string>
+    <string name="about_libs_repo_link">Repository e attribuzioni complete</string>
+    <string name="about_libs_maplibre_link">MapLibre GL JS — licenza</string>
+    <string name="about_libs_pmtiles_link">Protomaps PMTiles — licenza</string>
+    <string name="about_libs_flags_link">flag-icons — licenza</string>
+    <string name="about_libs_noto_link">Noto Sans — SIL OFL</string>
+
+    <string name="about_photos_section">Fotografie</string>
+    <string name="about_photos">La galleria usa Wikimedia Commons solo quando l\'utente la apre. Le foto non sono incluse nell\'APK: per ogni risultato vengono mostrati autore e licenza, e il tocco apre la pagina originale su Commons. I requisiti possono variare da file a file.</string>
+    <string name="about_photos_link">Commons — riutilizzare i contenuti</string>
+
+    <string name="about_privacy_section">Privacy e rete</string>
+    <string name="about_privacy">Paesi, regioni, città e preferenze restano sul dispositivo. L\'app non richiede account, pubblicità o analisi. La rete viene usata solo per la galleria Wikimedia Commons e per il browser quando l\'utente sceglie di aprire un approfondimento; Wikimedia riceve la richiesta HTTP e l\'indirizzo IP secondo le proprie policy.</string>
+    <string name="about_privacy_link">Wikimedia — privacy policy</string>
+
+    <string name="about_disputed">Confini contesi: la mappa mostra quello che dichiara la fonte di ciascun paese, e le fonti non concordano fra loro. Dove si contraddicono — Kashmir, Crimea, Cipro, Taiwan, Palestina, Sahara occidentale — Where We Go non sceglie e non intende prendere posizione.</string>
+    <string name="about_accuracy">Accuratezza: i dati geografici sono forniti così come disponibili dalle fonti; Where We Go non garantisce completezza o precisione dei confini.</string>
+</resources>

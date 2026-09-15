@@ -164,7 +164,12 @@ function gerarchiaDi(kind, feature) {
   if (kind === 'countries') return '';
   if (kind === 'regions') return nomePaese(p.country || paeseDiRegione(p.code));
   const pezzi = [];
-  if (p.pop) pezzi.push(`${p.pop.toLocaleString('it')} abitanti`);
+  // `linguaApp` e non 'it': il raggruppamento delle migliaia cambia con la
+  // lingua — 1,378,689 contro 1.378.689 — e questa riga la legge l'utente.
+  // La parola «abitanti» non si traduce qui perche' questa riga non arriva
+  // all'app: e' la gerarchia del prototipo. Nell'app la compone
+  // `IndiceCitta`, dalle risorse.
+  if (p.pop) pezzi.push(`${p.pop.toLocaleString(linguaApp)} abitanti`);
   if (p.cc) pezzi.push(nomePaeseIso2(p.cc));
   return pezzi.join(' · ');
 }
@@ -195,7 +200,12 @@ const ESCLUSIONI_RICERCA = '-map -flag';
 function terminiRicerca(kind, feature) {
   const p = feature.properties;
   const nome = p.name || p.code || '';
-  if (kind === 'countries') return `${nome} attractions ${ESCLUSIONI_RICERCA}`;
+  // Per una nazione si cerca con il nome nella lingua dell'utente: e' quello
+  // che si e' appena letto sulla scheda, ed e' quello che da' i risultati che
+  // uno si aspetta nel proprio motore di ricerca.
+  if (kind === 'countries') {
+    return `${nomePaese(p.code) || nome} attractions ${ESCLUSIONI_RICERCA}`;
+  }
   if (kind === 'regions') {
     const paese = nomePaese(p.country || paeseDiRegione(p.code));
     return `${nome} ${paese} attractions ${ESCLUSIONI_RICERCA}`;
@@ -236,10 +246,19 @@ function segnalaSelezione(hit) {
   const iso2 =
     kind === 'countries' ? byCode.countries.get(codice)?.properties?.iso2 || '' : '';
 
+  // Per una nazione il nome va preso da `nomePaese`, non dalla feature
+  // toccata: quella viene dai tile, dove il nome e' quello cotto in pipeline —
+  // cioe' italiano. Regioni e citta' passano invece cosi' come sono, perche' i
+  // loro nomi sono gia' endonimi o forme internazionali.
+  const nomeVisibile =
+    kind === 'countries'
+      ? nomePaese(codice) || hit.properties.name || String(codice)
+      : hit.properties.name || String(codice);
+
   window.AndroidUI.onFeatureTap(
     kind,
     String(codice),
-    hit.properties.name || String(codice),
+    nomeVisibile,
     gerarchiaDi(kind, hit),
     stato,
     haRegioni ? indiceRegioni[codice].n : 0,
@@ -1498,11 +1517,100 @@ function disattivaRegioni(code) {
   refreshRegionsPanel();
 }
 
-function nomePaese(code) {
-  return byCode.countries.get(code)?.properties.name || code;
+/* --------------------------------------------------------------------------
+ * I nomi dei paesi nella lingua di chi guarda
+ * --------------------------------------------------------------------------
+ *
+ * I dati hanno il nome del paese **cotto in italiano**: `countries.geojson` lo
+ * porta nel campo `name`, e lo stesso vale per il `countryName` delle sagome
+ * regionali e per la tabella `nazione` di `citta.db`. Tradurli alla sorgente
+ * vorrebbe dire rigenerare 205 MB di dati per 249 stringhe, e rifarlo a ogni
+ * lingua aggiunta.
+ *
+ * Qui sopra quei nomi si sovrappone `data/country-names.json` (11 KB, generato
+ * da `tools/nomi_paesi.js` a partire da Natural Earth). Il nome cotto resta il
+ * ripiego: se il file manca, l'app mostra quello che ha sempre mostrato.
+ *
+ * **Solo i paesi.** Le citta' hanno gia' il nome nella forma internazionale di
+ * GeoNames (`Rome`, `Milan`) e le suddivisioni sono endonimi (`Bayern`, non
+ * «Baviera» ne' «Bavaria»): sono gia' neutri, e tradurli sarebbe una perdita.
+ */
+
+/** ISO3 -> { en: 'Italy', it: 'Italia' }. `null` finche' non e' caricato. */
+let nomiPaesi = null;
+
+/** La lingua in uso, due lettere. Vedi `linguaScelta`. */
+let linguaApp = 'en';
+
+/**
+ * Quale lingua sta usando l'utente.
+ *
+ * **Prima si chiede all'app, poi al browser.** Da Android 13 esiste il
+ * selettore di lingua per-app — Impostazioni > App > Where We Go > Lingua — e
+ * quella scelta la conosce solo il lato Kotlin: `navigator.language` nella
+ * WebView riporta la lingua di sistema, che in quel caso e' un'altra. Nel
+ * prototipo web `AndroidUI` non esiste e si ricade sul browser, che li' e'
+ * l'unica fonte che ci sia.
+ */
+function linguaScelta() {
+  try {
+    if (window.AndroidUI && typeof window.AndroidUI.lingua === 'function') {
+      const l = window.AndroidUI.lingua();
+      if (l) return String(l).slice(0, 2).toLowerCase();
+    }
+  } catch (e) {
+    console.warn('[lingua] il ponte non risponde, uso quella del browser', e);
+  }
+  return String(navigator.language || 'en').slice(0, 2).toLowerCase();
 }
 
-/** Indice ISO2 -> nome, riempito pigramente al primo uso da `nomePaeseIso2`. */
+async function caricaNomiPaesi() {
+  linguaApp = linguaScelta();
+
+  // `lang` del documento: conta per la scelta dei glifi, la sillabazione e le
+  // tecnologie assistive. Si cambia **solo dentro l'app**, dove la pagina non
+  // mostra testo proprio — c'e' il globo e basta. Nel prototipo web la barra
+  // laterale e' scritta in italiano, quindi li' l'attributo statico `it` resta
+  // quello giusto: dichiarare una lingua diversa da quella dei contenuti e'
+  // peggio che non dichiararne nessuna.
+  if (perApp) document.documentElement.lang = linguaApp;
+
+  try {
+    const res = await fetch('data/country-names.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json();
+    nomiPaesi = j.nomi || null;
+    console.log(
+      `[lingua] ${linguaApp}; nomi dei paesi: ${Object.keys(nomiPaesi || {}).length} ` +
+        `(${(j.lingue || []).join(', ')})`
+    );
+  } catch (e) {
+    // Non e' fatale: senza tabella ogni nome resta quello cotto nei dati. Va
+    // detto nel log perche' il sintomo — interfaccia inglese e paesi italiani —
+    // sembrerebbe una traduzione dimenticata invece di un file che non c'e'.
+    console.warn('[lingua] country-names.json non caricato: i paesi restano come nei dati', e);
+    nomiPaesi = null;
+  }
+}
+
+/**
+ * Il nome del paese nella lingua in uso, o `ripiego` se non si sa.
+ *
+ * L'ordine dei ripieghi: lingua scelta, inglese (il default dell'app), nome
+ * cotto nei dati. Mai il codice ISO, che chi chiama gestisce da se'.
+ */
+function nomeLocalizzatoPaese(code, ripiego) {
+  const voce = nomiPaesi && nomiPaesi[code];
+  if (!voce) return ripiego;
+  return voce[linguaApp] || voce.en || ripiego;
+}
+
+function nomePaese(code) {
+  const cotto = byCode.countries.get(code)?.properties.name;
+  return nomeLocalizzatoPaese(code, cotto) || code;
+}
+
+/** Indice ISO2 -> ISO3, riempito pigramente al primo uso da `nomePaeseIso2`. */
 const paesiPerIso2 = new Map();
 
 /**
@@ -1524,10 +1632,15 @@ function nomePaeseIso2(iso2) {
   if (!paesiPerIso2.size) {
     for (const f of byCode.countries.values()) {
       const c = f.properties.iso2;
-      if (c) paesiPerIso2.set(c.toUpperCase(), f.properties.name);
+      // Si indicizza il **codice ISO3**, non il nome: il nome dipende dalla
+      // lingua, e questa mappa si costruisce una volta sola al primo uso.
+      // Tenerci dentro la stringa gia' risolta significherebbe congelare qui
+      // la lingua del primo accesso.
+      if (c) paesiPerIso2.set(c.toUpperCase(), f.properties.code);
     }
   }
-  return paesiPerIso2.get(String(iso2).toUpperCase()) || iso2;
+  const iso3 = paesiPerIso2.get(String(iso2).toUpperCase());
+  return iso3 ? nomePaese(iso3) : iso2;
 }
 
 /** Riapplica tutti gli stati salvati: dopo il caricamento e dopo un reset. */
@@ -1797,6 +1910,10 @@ async function main() {
   // countries.geojson non serve piu' a disegnare — a quello pensano i tile —
   // ma conserva i metadati e il riferimento alle sagome nazionali caricate
   // singolarmente da country-shapes (§7.1). Il catalogo pesa circa 1,6 MB.
+  // Prima di tutto il resto: `byCode` viene riempito subito sotto, e la prima
+  // scheda puo' aprirsi appena la mappa e' pronta. E' un file da 11 KB.
+  await caricaNomiPaesi();
+
   const [countries, places, indice, colori] = await Promise.all([
     loadGeoJSON('data/countries.geojson'),
     // il GeoJSON dei capoluoghi si carica solo se non ci sono i tile

@@ -167,7 +167,7 @@ async function verify(data,work,baseline) {
       tilePresence:'one boundary vertex and neighboring tiles per entity at z9; not an exhaustive tile scan'};
     fs.writeFileSync(path.join(work,'verification.json'),JSON.stringify(report,null,2));
     // La pubblicazione ricontrolla gli hash: una modifica dopo i test invalida il manifest.
-    const files=['countries.geojson','boundaries.pmtiles','regions/index.json','canonical-report.json'];
+    const files=['countries.geojson','country-names.json','boundaries.pmtiles','regions/index.json','canonical-report.json'];
     for(const f of countryCatalog)if(f.mask)files.push(`country-shapes/${f.properties.code}.geojson`);
     for(const iso of byCountry.keys())files.push(`regions/${iso}.geojson`);
     for(const code of codes)files.push(`region-shapes/${code}.geojson`);

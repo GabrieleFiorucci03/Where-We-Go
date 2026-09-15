@@ -1,6 +1,8 @@
 package com.provamappa.globe
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,15 +34,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Le tre famiglie di voci, con l'etichetta che si legge sul filtro. */
-private enum class Tipo(val chiave: String, val etichetta: String) {
-    NAZIONI("countries", "Nazioni"),
-    REGIONI("regions", "Regioni"),
-    CITTA("places", "Città"),
+/**
+ * Le tre famiglie di voci.
+ *
+ * Come in [Stato]: [chiave] e' il prefisso salvato e non si traduce,
+ * [etichetta] e' cio' che si legge sul filtro e quindi e' un id di risorsa.
+ */
+private enum class Tipo(val chiave: String, @StringRes val etichetta: Int) {
+    NAZIONI("countries", R.string.type_countries),
+    REGIONI("regions", R.string.type_regions),
+    CITTA("places", R.string.type_cities),
 }
 
 /**
@@ -83,6 +92,9 @@ fun SchermataMarcati(
 
     val righe = remember { mutableStateListOf<Voce>() }
     val paesi = remember { mutableStateListOf<Pair<String, String>>() } // ISO3 -> nome
+    // Serve a [risolvi], che gira fuori da Compose e le righe di contesto —
+    // «nazione», «regione» — le deve comunque prendere dalle risorse.
+    val contesto = LocalContext.current
 
     BackHandler { onChiudi() }
 
@@ -92,7 +104,7 @@ fun SchermataMarcati(
     // nazione costano l'analisi del suo file.
     LaunchedEffect(stato, tipo, nazione, statoUtente) {
         val esito = withContext(Dispatchers.IO) {
-            risolvi(indice, regioni, statoUtente, stato, tipo, nazione)
+            risolvi(contesto, indice, regioni, statoUtente, stato, tipo, nazione)
         }
         // Se la nazione su cui si era ristretto non compare fra quelle che hanno
         // qualcosa sotto il tipo appena scelto, il filtro si toglie da se'.
@@ -116,9 +128,9 @@ fun SchermataMarcati(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onChiudi) {
-                    Icon(Icons.Filled.Close, contentDescription = "Chiudi")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
                 }
-                Text("Cosa hai segnato", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.marked_title), style = MaterialTheme.typography.titleMedium)
             }
 
             // Stato e tipo: due file di filtri, sempre visibili. Sono le due
@@ -133,7 +145,7 @@ fun SchermataMarcati(
                     FilterChip(
                         selected = s == stato,
                         onClick = { stato = s },
-                        label = { Text(s.etichetta, maxLines = 1) },
+                        label = { Text(stringResource(s.etichetta), maxLines = 1) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = s.colore,
                             selectedLabelColor = Color.White,
@@ -151,7 +163,7 @@ fun SchermataMarcati(
                     FilterChip(
                         selected = t == tipo,
                         onClick = { tipo = t },
-                        label = { Text(t.etichetta, maxLines = 1) },
+                        label = { Text(stringResource(t.etichetta), maxLines = 1) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -169,7 +181,7 @@ fun SchermataMarcati(
                     FilterChip(
                         selected = nazione.isEmpty(),
                         onClick = { nazione = "" },
-                        label = { Text("Tutte") },
+                        label = { Text(stringResource(R.string.marked_filter_all)) },
                     )
                     for ((codice, nome) in paesi) {
                         FilterChip(
@@ -183,7 +195,7 @@ fun SchermataMarcati(
 
             if (righe.isEmpty()) {
                 Text(
-                    "Niente di segnato qui",
+                    stringResource(R.string.marked_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -220,6 +232,7 @@ private class Elenco(val voci: List<Voce>, val paesi: List<Pair<String, String>>
  * si potrebbe piu' cambiare idea.
  */
 private fun risolvi(
+    contesto: Context,
     indice: IndiceCitta,
     regioni: IndiceRegioni,
     statoUtente: Map<String, String>,
@@ -239,7 +252,7 @@ private fun risolvi(
 
     val voci: List<Voce> = when (tipo) {
         Tipo.NAZIONI -> chiavi.map { c ->
-            perIso3[c] ?: Voce("countries", c, c, "nazione")
+            perIso3[c] ?: Voce("countries", c, c, contesto.getString(R.string.subtitle_country))
         }
 
         Tipo.REGIONI -> chiavi.map { gid ->

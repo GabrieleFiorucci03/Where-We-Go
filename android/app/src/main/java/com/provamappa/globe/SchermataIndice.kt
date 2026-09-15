@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -135,7 +136,9 @@ fun SchermataIndice(
                 }) {
                     Icon(
                         if (nazione != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Filled.Close,
-                        contentDescription = if (nazione != null) "Indietro" else "Chiudi",
+                        contentDescription = stringResource(
+                            if (nazione != null) R.string.action_back else R.string.action_close
+                        ),
                     )
                 }
                 OutlinedTextField(
@@ -144,13 +147,18 @@ fun SchermataIndice(
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     placeholder = {
-                        Text(nazione?.let { "Cerca ovunque" } ?: "Cerca una città o una nazione")
+                        Text(
+                            stringResource(
+                                if (nazione != null) R.string.search_anywhere
+                                else R.string.menu_search_title
+                            )
+                        )
                     },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     trailingIcon = {
                         if (testo.isNotEmpty()) {
                             IconButton(onClick = { testo = "" }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Pulisci")
+                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_clear))
                             }
                         }
                     },
@@ -167,7 +175,9 @@ fun SchermataIndice(
 
             if (righe.isEmpty()) {
                 Text(
-                    if (testo.isNotBlank()) "Nessun risultato" else "Nessuna voce",
+                    stringResource(
+                        if (testo.isNotBlank()) R.string.list_no_results else R.string.list_no_entries
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp),
                 )

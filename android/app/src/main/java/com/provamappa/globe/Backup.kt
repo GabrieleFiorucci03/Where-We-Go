@@ -22,8 +22,17 @@ import java.util.Locale
  */
 object Backup {
 
+    /**
+     * Il nome proposto nel selettore di sistema.
+     *
+     * `Locale.ROOT` e non `Locale.ITALY`: il formato e' `yyyyMMdd-HHmm`, cifre
+     * e basta, ma il locale decide comunque **quali** cifre — in un calendario
+     * hindi o arabo `SimpleDateFormat` produce numeri che non sono ASCII, e il
+     * nome del file smette di ordinarsi e in certi filesystem di scriversi. Un
+     * nome di file non e' testo da leggere: e' un identificatore, e va fissato.
+     */
     fun nomeSuggerito(): String {
-        val quando = SimpleDateFormat("yyyyMMdd-HHmm", Locale.ITALY).format(Date())
+        val quando = SimpleDateFormat("yyyyMMdd-HHmm", Locale.ROOT).format(Date())
         return "wherewego-$quando.json"
     }
 
