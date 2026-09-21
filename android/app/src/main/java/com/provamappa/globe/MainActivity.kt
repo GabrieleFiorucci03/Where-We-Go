@@ -18,9 +18,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -52,6 +55,24 @@ import androidx.webkit.WebViewAssetLoader
 class MainActivity : ComponentActivity() {
 
     private var webView: WebView? = null
+
+    /**
+     * Altezza della fascia di sistema in alto — ora, batteria, rete — in px CSS.
+     *
+     * La WebView disegna a tutto schermo, quindi per la pagina lo schermo
+     * comincia da zero e i comandi dello zoom finivano dietro quella fascia.
+     * Il numero glielo diciamo noi, perche' solo qui si conosce: cambia con il
+     * telefono e con il ritaglio della fotocamera. Nella WebView un px CSS vale
+     * un dp, quindi il valore passa com'e'.
+     */
+    private var barraAlta = 0f
+
+    private fun passaBarra(view: WebView?) {
+        view?.evaluateJavascript(
+            "document.documentElement.style.setProperty('--barra-sistema', '${barraAlta}px')",
+            null,
+        )
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -143,6 +164,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Misurata qui e non nella WebView: la pagina non ha modo di
+                // saperla da sola. Vedi `passaBarra`.
+                val altezzaBarra = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
                 Box(Modifier.fillMaxSize()) {
                     AndroidView(
                         modifier = Modifier.fillMaxSize(),
@@ -168,6 +193,7 @@ class MainActivity : ComponentActivity() {
 
                                     override fun onPageFinished(view: WebView, url: String) {
                                         Log.i(TAG, "pagina caricata: $url")
+                                        passaBarra(view)
                                     }
                                 }
                                 // i messaggi della console finiscono in logcat: e' il
@@ -194,6 +220,10 @@ class MainActivity : ComponentActivity() {
                                 loadUrl("https://appassets.androidplatform.net/assets/index.html")
                                 webView = this
                             }
+                        },
+                        update = { view ->
+                            barraAlta = altezzaBarra.value
+                            passaBarra(view)
                         },
                     )
 

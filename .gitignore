@@ -31,6 +31,11 @@ android/local.properties
 # L'indice delle città: 57 MB rigenerabili con tools/prepara_indice.js
 android/app/src/main/assets/citta.db
 
+# Gli asset dell'asset pack: una copia di web/data, fatta a ogni build dal
+# compito `preparaDati` di android/app/build.gradle.kts. L'originale e' in
+# web/data, che a sua volta non si versiona.
+android/dati/src/main/assets/
+
 # Chiavi di firma. Se un giorno ne nasce una, non deve finire qui dentro.
 *.jks
 *.keystore

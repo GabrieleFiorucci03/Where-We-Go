@@ -78,6 +78,15 @@
   .per-app #hud,
   .per-app #mode,
   .per-app #toast { display: none !important; }
+
+  /* Nell'app la pagina arriva fin sotto la fascia di sistema — ora, batteria,
+     rete — perche' la WebView disegna a tutto schermo (targetSdk 35) e per lei
+     lo schermo comincia da zero. I comandi in alto a destra — piu', meno,
+     bussola, globo — ci finivano dietro. L'altezza vera di quella fascia la
+     passa MainActivity in --barra-sistema: un numero fisso non andrebbe bene,
+     perche' cambia con il telefono e con il ritaglio della fotocamera. Il
+     ripiego copre solo i pochi istanti prima che arrivi. */
+  .per-app .maplibregl-ctrl-top-right { top: calc(var(--barra-sistema, 24px) + 6px); }
 </style>
 </head>
 <body>

@@ -4,12 +4,13 @@ Tutto quello che serve, in ordine di esecuzione. Il ragionamento dietro ogni sce
 **§14 di `docs/PIANO.md`**; qui ci sono solo le cose da fare, con lo stato di oggi.
 
 - `[ ]` da fare · `[x]` fatto e verificato · `[~]` fatto a metà o da riverificare
-- **Data di questo stato: 2026-09-12.** I valori correnti sono stati riletti dal repository, non
+- **Data di questo stato: 2026-09-21** per la Fase 4 e le righe di tabella che ne dipendono; il resto è del 2026-09-12. I valori correnti sono stati riletti dal repository, non
   dedotti dal piano. Rispetto al 2026-09-09 sono cambiate due cose: **l'app è diventata
   multilingue** (inglese nativo, italiano quando il telefono è in italiano — vedi §9.0 di
   `PIANO.md`), e la **Release ODbL risulta già pubblicata**, cosa che la versione precedente di
-  questo documento dava ancora per fare. Resta invariato il vincolo che comanda tutto:
-  **il peso, 252 MB**.
+  questo documento dava ancora per fare. **Il vincolo del peso, che comandava tutto, è caduto il
+  2026-09-21**: i dati sono passati in un asset pack install-time e il modulo base è sceso a
+  141,6 MB compressi — vedi Fase 4.
 - Le regole delle console cambiano: ogni soglia, formato e scadenza qui sotto va riverificato
   nella Play Console il giorno in cui si esegue il passo.
 
@@ -23,9 +24,9 @@ Tutto quello che serve, in ordine di esecuzione. Il ragionamento dietro ogni sce
 | AGP / Gradle | 8.7.3 / 8.11.1 | versioni che reggono l'SDK 36 |
 | buildType | solo `debug` | `debug` + `release` firmato |
 | Firma | chiave di debug | keystore personale + Play App Signing |
-| Artefatto | APK di debug, **252 MB** (`dist/WhereWeGo-1.3.3.apk`, 2026-09-08; era 179 il 06-09 e 144 prima dell'allineamento dei confini) | AAB, download stimato sotto il tetto |
-| Assets della WebView | tutta `web/`, banco di prova compreso | in release solo ciò che serve, vedi Fase 3 |
-| Debug della WebView | acceso sempre (`MainActivity.kt:69`) | solo in `BuildConfig.DEBUG` |
+| Artefatto | ✅ AAB con asset pack: modulo base **141,6 MB** compressi, pacchetto `dati` **69,7 MB** (misurati sull'AAB di debug del 2026-09-21) | resta da leggere il download stimato in Console |
+| Assets della WebView | `web/` senza i dati (li porta l'asset pack), banco di prova ancora compreso | in release togliere anche le pagine di officina, vedi Fase 3 |
+| Debug della WebView | acceso sempre (`MainActivity.kt:91`) | solo in `BuildConfig.DEBUG` |
 | Lingua | ✅ inglese nativo + italiano, segue il telefono | va bene così; la **scheda dello store** va però scritta in inglese per prima, vedi Fase 7 |
 
 ---
@@ -94,7 +95,7 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
       di default tengono i metodi `@JavascriptInterface`, ma è la cosa che R8 rompe per prima.
       Il restringimento delle risorse non tocca gli `assets`, quindi i PMTiles non rischiano.
 - [ ] Condizionare `WebView.setWebContentsDebuggingEnabled(true)`
-      (`android/app/src/main/java/com/provamappa/globe/MainActivity.kt:69`) a `BuildConfig.DEBUG`.
+      (`android/app/src/main/java/com/provamappa/globe/MainActivity.kt:91`) a `BuildConfig.DEBUG`.
       **Un ostacolo in meno dal 2026-09-12**: `buildFeatures { buildConfig = true }` è già acceso
       in `build.gradle.kts` — serviva allo User-Agent di Wikimedia — quindi `BuildConfig` esiste
       già e resta solo la riga da condizionare.
@@ -121,34 +122,50 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
 
 ## Fase 4 — Peso e formato dell'artefatto
 
-> **È il vincolo che comanda questa fase, e dal 2026-09-08 non è più un margine stretto: è uno
-> sforamento probabile.** L'APK è a **252 MB**, il tetto del modulo base è dell'ordine dei 200 MB
-> di download. Va misurato prima di ogni altro lavoro di Fase 3, perché se serve Play Asset
-> Delivery cambia la struttura del progetto, non una riga di configurazione.
+> **Risolto nella struttura il 2026-09-21, da confermare in Console.** I dati geografici non
+> stanno più nel modulo base: sono un **asset pack install-time** (`android/dati/`), che Play
+> consegna insieme all'app. I due tetti sono separati — secondo la tabella della Play Console
+> **500 MB il modulo base**, 4 GB cumulativi gli asset pack install-time — e il taglio li rispetta
+> entrambi con margine. Attenzione: il **200 MB** citato nelle versioni precedenti di questo
+> documento è la cifra della vecchia guida; quella che comanda il caricamento è la tabella della
+> Console, da rileggere il giorno in cui si carica.
 
-- [ ] **Generare l'AAB** (`bundleRelease`) e leggere la **dimensione di download stimata** nella
-      Console. Oggi l'APK di debug pesa **252 MB**, così ripartiti:
+- [x] **La divisione è fatta e misurata.** Il criterio non è la dimensione ma **come il file viene
+      letto**, ed è scritto in `android/app/build.gradle.kts`:
 
-      | Cosa | Peso | Note |
+      | Cosa | Dove sta ora | Perché |
       |---|---|---|
-      | `web/data/region-shapes` | 113 MB | **3.343 file GeoJSON sciolti**, uno per suddivisione |
-      | `web/data/country-shapes` | 92 MB | 249 file GeoJSON sciolti |
-      | `android/app/src/main/assets/citta.db` | 57 MB | indice SQLite FTS4 |
-      | `web/data/boundaries.pmtiles` | 43 MB | `noCompress`, non comprimibile |
-      | `web/data/cities.pmtiles` | 41 MB | idem |
-      | `web/data/border-lines.pmtiles` | 27 MB | idem |
-      | `web/data/firenze.pmtiles` | 6,3 MB | banco di prova, da togliere (Fase 3) |
+      | `boundaries`, `cities`, `border-lines`, `firenze` (115 MB) | modulo base | si leggono a pezzi con `openFd`, che vuole asset **non compressi**: `noCompress` lo garantisce qui, dentro un pacchetto passerebbe per la configurazione del bundle |
+      | `citta.db` (57 MB) | modulo base | SQLite lo copia fuori al primo avvio, non cambia nulla |
+      | `region-shapes` + `country-shapes` + `regions` (198 MB, 3.592 file) | **asset pack `dati`** | si leggono in streaming (`assets.open`, WebViewAssetLoader): la compressione non dà fastidio e fa risparmiare |
 
-      I 205 MB di sagome sono il posto dove guardare per primo: 3.592 GeoJSON sciolti sono il
-      formato più costoso possibile per quei dati, e a differenza dei PMTiles si comprimono.
-- [ ] **Convertire l'AAB in APK con `bundletool`, installarlo e aprire la mappa.** La lettura a
-      pezzi dei PMTiles dipende da `noCompress`: se la conversione li comprime, `assets.openFd`
-      smette di funzionare e la mappa resta vuota. È un guasto che l'APK compilato direttamente
-      non mostra.
-- [ ] Quando il download stimato sfora il tetto del modulo base (dell'ordine dei 200 MB — coi
-      numeri di oggi è l'esito da aspettarsi, non l'eccezione): **Play Asset Delivery** con un
-      asset pack install-time, e riprovare il giro qui sopra. In alternativa, o prima: ricompattare
-      le sagome, che è lavoro di pipeline e non tocca la struttura del progetto.
+- [x] **AAB generato e pesato** (debug, 2026-09-21): **212,2 MB** in tutto — modulo base 232,5 MB
+      sciolti → **141,6 MB compressi**, pacchetto `dati` 198,4 MB → **69,7 MB compressi**. Nessuna
+      sagoma è rimasta nel modulo base (verificato contando le voci dell'AAB, non a occhio).
+- [x] **I PMTiles restano leggibili a pezzi.** Verificato sull'APK prodotto **dal bundle**
+      (`packageDebugUniversalApk`), non su quello compilato: tutti e quattro risultano `STORED`.
+      Il `BundleConfig.pb` dell'AAB porta il glob `**[pP][mM][tT][iI][lL][eE][sS]`, cioè
+      `noCompress` sopravvive al passaggio per il bundle.
+- [ ] **Leggere il download stimato nella Play Console** al primo caricamento: è l'unico numero
+      che conta davvero, e da qui non si può calcolare.
+- [ ] **Provare l'AAB su un telefono vero**, con `bundletool --local-testing` o dal test interno:
+      resta da vedere sul campo che `context.assets` veda gli asset del pacchetto install-time
+      (deve, ma se non lo facesse le sagome sparirebbero in silenzio).
+- [ ] Ricompattare le sagome resta possibile e ora è **facoltativo**: non è più ciò che sblocca la
+      pubblicazione, solo peso in meno per chi installa.
+
+### Quello che l'asset pack è costato
+
+- **Un APK compilato con `assembleDebug` non contiene più le sagome**: gli asset pack esistono solo
+  nell'AAB. Il giro corto — compila, installa via cavo, manda l'APK per Telegram — si fa ora con
+  **`./gradlew :app:assembleDebug -PdatiNelPacchetto=false`**, che rimette tutto dentro un pacchetto
+  unico e autosufficiente (**240,4 MB**, misurato). Senza quella bandierina l'app si apre con
+  bandiere e regioni mancanti, e **nessun errore lo dice**.
+- **Sul telefono le sagome occupano di più.** Play consegna gli asset pack install-time **non
+  compressi**: 198 MB sul dispositivo invece dei 77 MB che occupavano compressi dentro l'APK.
+  AGP non espone l'opzione del bundle che li comprimerebbe.
+- **L'installazione chiede il doppio dello spazio libero** degli asset pack, perché è un requisito
+  della consegna install-time.
 
 ## Fase 5 — Obblighi legali
 
