@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Le stesse regole di `data_extraction_rules.xml`, nel formato che usa Android
+  fino alla 11 (API 30). Da ritoccare insieme all'altro file: due formati per la
+  stessa decisione e' una cosa che Android chiede, non una scelta nostra.
+-->
+<full-backup-content>
+    <exclude domain="file" path="citta.db" />
+    <exclude domain="external" path="tiles" />
+</full-backup-content>

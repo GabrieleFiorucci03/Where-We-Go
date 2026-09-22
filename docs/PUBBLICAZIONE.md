@@ -20,13 +20,13 @@ Tutto quello che serve, in ordine di esecuzione. Il ragionamento dietro ogni sce
 |---|---|---|
 | `applicationId` | `com.provamappa.globe` | dominio definitivo, scelto una volta per sempre |
 | `versionName` / `versionCode` | ✅ `1.3.3` / `7` | va bene così; il `versionCode` sale a ogni caricamento |
-| `compileSdk` / `targetSdk` | 35 / 35 | 36 / 36 — **scaduto**, vedi Fase 3 |
-| AGP / Gradle | 8.7.3 / 8.11.1 | versioni che reggono l'SDK 36 |
-| buildType | solo `debug` | `debug` + `release` firmato |
-| Firma | chiave di debug | keystore personale + Play App Signing |
+| `compileSdk` / `targetSdk` | ✅ 36 / 36 | va bene così; sale ogni anno, vedi «Dopo la pubblicazione» |
+| AGP / Gradle | ✅ 8.13.2 / 8.14.3 | va bene così (8.13.2 è l'ultima della serie 8; la 9 è un salto a parte) |
+| buildType | ✅ `debug` + `release` con R8 | va bene così; resta da firmarlo |
+| Firma | chiave di debug; la release esce **non firmata** finché manca `keystore.properties` | keystore personale + Play App Signing |
 | Artefatto | ✅ AAB con asset pack: modulo base **141,6 MB** compressi, pacchetto `dati` **69,7 MB** (misurati sull'AAB di debug del 2026-09-21) | resta da leggere il download stimato in Console |
-| Assets della WebView | `web/` senza i dati (li porta l'asset pack), banco di prova ancora compreso | in release togliere anche le pagine di officina, vedi Fase 3 |
-| Debug della WebView | acceso sempre (`MainActivity.kt:91`) | solo in `BuildConfig.DEBUG` |
+| Assets della WebView | ✅ in release solo ciò che serve: niente dati (li porta l'asset pack) e niente banco di prova | va bene così |
+| Debug della WebView | ✅ solo in `BuildConfig.DEBUG` (`MainActivity.kt:91`) | va bene così |
 | Lingua | ✅ inglese nativo + italiano, segue il telefono | va bene così; la **scheda dello store** va però scritta in inglese per prima, vedi Fase 7 |
 
 ---
@@ -87,38 +87,52 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
       repository. Resta solo la regola permanente: ogni caricamento, test interni compresi, vuole
       un `versionCode` nuovo e più alto.
 
-## Fase 3 — Build di release (oggi non esiste)
+## Fase 3 — Build di release (esiste dal 2026-09-21; restano le prove su telefono)
 
-- [ ] Aggiungere il buildType **`release`** in `android/app/build.gradle.kts` con `signingConfig`,
-      `isMinifyEnabled = true`, `isShrinkResources = true` e `proguardFiles`.
-- [ ] **Provare il ponte JS↔Kotlin sull'APK offuscato**, non solo verificare che compili: le regole
-      di default tengono i metodi `@JavascriptInterface`, ma è la cosa che R8 rompe per prima.
-      Il restringimento delle risorse non tocca gli `assets`, quindi i PMTiles non rischiano.
-- [ ] Condizionare `WebView.setWebContentsDebuggingEnabled(true)`
-      (`android/app/src/main/java/com/provamappa/globe/MainActivity.kt:91`) a `BuildConfig.DEBUG`.
-      **Un ostacolo in meno dal 2026-09-12**: `buildFeatures { buildConfig = true }` è già acceso
-      in `build.gradle.kts` — serviva allo User-Agent di Wikimedia — quindi `BuildConfig` esiste
-      già e resta solo la riga da condizionare.
-- [ ] **Escludere dagli assets di release il banco di prova.** `build.gradle.kts:40` include tutta
-      `../web` così com'è, quindi nell'APK finiscono anche `compare.html`, `pmtiles-test.html`,
-      `android.html` e **`web/data/firenze.pmtiles` (6,3 MB)**, che servivano allo sviluppo. Non è
-      solo peso: sono pagine di officina dentro un'app pubblica.
-- [ ] Portare `compileSdk` e `targetSdk` a **36**, aggiornando AGP e Gradle di conseguenza (oggi
-      AGP 8.7.3 e Gradle 8.11.1, che l'SDK 36 non lo reggono). **La scadenza Play del 31 agosto
-      2026 è passata**: il 36 non è più un adeguamento da fare con calma, senza non si carica né
-      un'app nuova né un aggiornamento.
-- [ ] Verificare la **predictive back**, attiva di default con `targetSdk` 36: i `BackHandler` di
-      menu, galleria, indice e schermata «Informazioni e licenze» non devono far uscire dall'app
-      per sbaglio. Dichiarare `android:enableOnBackInvokedCallback` esplicitamente: oggi nel
-      manifest non c'è.
-- [ ] Verificare il supporto alle **pagine da 16 KB** sull'artefatto finale (l'app non ha librerie
-      native proprie, ma il controllo è richiesto).
-- [ ] Definire le regole di backup (`dataExtractionRules`): finché lo stato vive nel `localStorage`
-      della WebView, il comportamento al cambio di telefono dipende dal backup automatico. Oggi il
-      manifest non dichiara né `allowBackup` né le regole, quindi il comportamento è quello di
-      default — cioè non scelto da noi.
-- [ ] Controllare che `android:debuggable` non finisca nel manifest di release e che non restino
-      log verbosi di sviluppo.
+- [x] **Buildtype `release` aggiunto** (2026-09-21) in `android/app/build.gradle.kts`, con
+      `isMinifyEnabled`, `isShrinkResources`, `proguardFiles` e un `signingConfig` che legge
+      `keystore.properties` dalla radice del progetto Android. Quel file non esiste ancora e non va
+      versionato: finché manca, la release **si compila e resta non firmata** — che è quanto serve
+      per provare R8 e misurare l'AAB prima di avere la chiave. Un artefatto non firmato non si
+      installa e non si carica, quindi non si spedisce per sbaglio.
+- [~] **Il ponte JS↔Kotlin sopravvive a R8 — verificato nel pacchetto, non ancora in esecuzione.**
+      `android/app/proguard-rules.pro` (nuovo) tiene i metodi `@JavascriptInterface` e, per
+      leggibilità, le due classi del ponte per nome. Sull'APK di release offuscato i nomi
+      `readBase64`, `cartella`, `onSelezione`, `lingua`, `onImmagine` risultano ancora presenti nel
+      dex. **Resta da aprire l'app vera**: che il nome ci sia non prova che la chiamata dalla
+      pagina arrivi a destinazione.
+- [x] **Debug della WebView condizionato a `BuildConfig.DEBUG`** (2026-09-21,
+      `MainActivity.kt:91`). `tools/collaudo_apk.cjs` continua a funzionare sulle build di
+      sviluppo; sulla release il varco per DevTools è chiuso, quindi il collaudo automatico della
+      release va fatto **prima**, o con una release di prova che lo lasci aperto.
+- [x] **Banco di prova fuori dalla release** (2026-09-21). `compare.html`, `compare.js`,
+      `pmtiles-test.html`, `pmtiles-test.js`, `android.html` e `web/data/firenze.pmtiles` (6,3 MB)
+      stanno ora negli asset della **sola build di debug**, tramite il compito `preparaOfficina`.
+      Verificato sull'APK di release: nessuno dei sei è dentro. Attenzione a non aggiungere
+      `android-source.js` a quell'elenco per assonanza: lo importa `app.js`, e toglierlo
+      spegnerebbe la mappa.
+- [x] **`compileSdk` e `targetSdk` a 36** (2026-09-21), con **AGP 8.13.2** e **Gradle 8.14.3** —
+      l'ultima della serie 8, per non prendersi anche il salto alla 9 insieme a tutto il resto.
+      Kotlin resta 2.0.21. Compilano sia la release sia la build di sviluppo; nessun avviso di
+      deprecazione dal progetto. La piattaforma 36 non era installata e se l'è scaricata Gradle.
+- [~] **`android:enableOnBackInvokedCallback="true"` dichiarato nel manifest** (2026-09-21):
+      scelto invece che subito per effetto del `targetSdk`. **Resta la prova**, che vuole un
+      telefono: i `BackHandler` di menu, galleria, indice e schermata «Informazioni e licenze» non
+      devono far uscire dall'app per sbaglio.
+- [x] **Pagine da 16 KB: verificato** sull'APK di release del 2026-09-21. L'unica libreria nativa
+      nel pacchetto è `libandroidx.graphics.path.so`, che arriva da AndroidX: nei due ABI a 64 bit
+      — arm64-v8a e x86_64 — i segmenti caricabili sono allineati a 16384. Sugli ABI a 32 bit il
+      requisito non si applica. Da rifare se un giorno entra una dipendenza con codice nativo.
+- [x] **Regole di backup dichiarate** (2026-09-21): `allowBackup="true"` più
+      `res/xml/data_extraction_rules.xml` e `res/xml/backup_rules.xml` (lo stesso elenco nel
+      formato che Android usa fino alla 11). Le marcature stanno nel `localStorage` della WebView,
+      dentro la cartella dati dell'app, e seguono il telefono. Restano **fuori** due file
+      rigenerabili e grossi: la copia di `citta.db` (57 MB) e la cartella esterna `tiles/`. Non è
+      una pulizia estetica: il backup nel cloud ha una **quota di 25 MB per app**, e superarla non
+      salva metà backup — lo fa fallire tutto, marcature comprese.
+- [x] **`android:debuggable` non c'è nel manifest di release** (verificato sul manifest fuso del
+      2026-09-21). Restano da rivedere i log verbosi di sviluppo, che non sono un ostacolo allo
+      store ma si leggono in logcat su qualunque telefono.
 
 ## Fase 4 — Peso e formato dell'artefatto
 
@@ -139,9 +153,11 @@ Nessuna di queste è lavoro di codice, e tutte bloccano qualcosa a valle.
       | `citta.db` (57 MB) | modulo base | SQLite lo copia fuori al primo avvio, non cambia nulla |
       | `region-shapes` + `country-shapes` + `regions` (198 MB, 3.592 file) | **asset pack `dati`** | si leggono in streaming (`assets.open`, WebViewAssetLoader): la compressione non dà fastidio e fa risparmiare |
 
-- [x] **AAB generato e pesato** (debug, 2026-09-21): **212,2 MB** in tutto — modulo base 232,5 MB
-      sciolti → **141,6 MB compressi**, pacchetto `dati` 198,4 MB → **69,7 MB compressi**. Nessuna
-      sagoma è rimasta nel modulo base (verificato contando le voci dell'AAB, non a occhio).
+- [x] **AAB di release generato e pesato** (2026-09-21): **195,6 MB** in tutto — modulo base
+      174,3 MB sciolti → **122,9 MB compressi** (R8 e il banco di prova fuori si vedono: in debug
+      erano 141,6), pacchetto `dati` 198,4 MB → **69,7 MB compressi**. Nessuna sagoma è rimasta nel
+      modulo base, e nessuna pagina di officina è nel pacchetto: verificato contando le voci
+      dell'AAB, non a occhio.
 - [x] **I PMTiles restano leggibili a pezzi.** Verificato sull'APK prodotto **dal bundle**
       (`packageDebugUniversalApk`), non su quello compilato: tutti e quattro risultano `STORED`.
       Il `BundleConfig.pb` dell'AAB porta il glob `**[pP][mM][tT][iI][lL][eE][sS]`, cioè

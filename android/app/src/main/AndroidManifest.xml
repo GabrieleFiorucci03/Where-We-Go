@@ -12,11 +12,25 @@
          la galleria resta vuota e resta il pulsante per cercare sul web. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Backup: dichiarato invece che lasciato al valore predefinito. Le
+         marcature stanno nel `localStorage` della WebView, cioe' dentro la
+         cartella dati dell'app, quindi seguono il telefono; i due file grossi e
+         rigenerabili restano fuori. Il perche' e il dettaglio stanno in
+         `res/xml/data_extraction_rules.xml`.
+
+         `enableOnBackInvokedCallback`: il gesto indietro previsto, che con
+         targetSdk 36 e' acceso comunque. Dichiararlo qui vuol dire sceglierlo,
+         e i `BackHandler` di menu, galleria, indice e schermata delle licenze
+         vanno provati su un telefono vero prima di pubblicare. -->
     <application
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:enableOnBackInvokedCallback="true"
         android:localeConfig="@xml/locales_config"
         android:hardwareAccelerated="true"
         android:theme="@android:style/Theme.Material.NoActionBar">

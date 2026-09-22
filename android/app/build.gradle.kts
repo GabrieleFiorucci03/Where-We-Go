@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -19,21 +21,63 @@ plugins {
 val datiNelPacchetto =
     (project.findProperty("datiNelPacchetto") as String? ?: "true").toBoolean()
 
+/*
+ * La chiave di firma, se esiste.
+ *
+ * Non sta nel repository e non ci deve finire: `.gitignore` tiene fuori sia i
+ * portachiavi sia questo file. `keystore.properties` va accanto a
+ * `settings.gradle.kts` e contiene quattro righe — `storeFile`, `storePassword`,
+ * `keyAlias`, `keyPassword`.
+ *
+ * Se non c'e', la build di release si fa lo stesso e resta **non firmata**:
+ * serve a provare R8 e a misurare l'AAB prima di avere la chiave, che e' un
+ * passo di Fase 2. Un artefatto non firmato non si installa e non si carica,
+ * quindi non c'e' il rischio di spedire per sbaglio qualcosa di provvisorio.
+ */
+val fileChiavi = rootProject.file("keystore.properties")
+val chiavi = Properties().apply {
+    if (fileChiavi.isFile) fileChiavi.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.provamappa.globe"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.provamappa.globe"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 7
         versionName = "1.3.3"
+    }
+
+    signingConfigs {
+        if (fileChiavi.isFile) create("release") {
+            storeFile = rootProject.file(chiavi.getProperty("storeFile"))
+            storePassword = chiavi.getProperty("storePassword")
+            keyAlias = chiavi.getProperty("keyAlias")
+            keyPassword = chiavi.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
         debug {
             isMinifyEnabled = false
+        }
+
+        release {
+            // R8: toglie il codice non raggiungibile e rinomina il resto. Il
+            // punto delicato e' il ponte con JavaScript — i metodi
+            // `@JavascriptInterface` sono chiamati solo dalla pagina, cioe' da
+            // fuori, e R8 non ha modo di vederlo: le regole stanno in
+            // `proguard-rules.pro`, con scritto perche'.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (fileChiavi.isFile) signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -62,6 +106,12 @@ android {
         // in fondo a questo file, che e' anche dove sta scritto il criterio.
         layout.buildDirectory.dir("assets-web"),
     )
+
+    // Il banco di prova — compare.html, pmtiles-test.html, android.html e il
+    // PMTiles di Firenze — sta negli asset della sola build di **debug**. Non e'
+    // questione di peso: sono pagine di officina, e in un'app pubblica non ci
+    // vanno. Le riempie `preparaOfficina`, in fondo a questo file.
+    sourceSets["debug"].assets.srcDir(layout.buildDirectory.dir("assets-officina"))
 
     // Play Asset Delivery: le sagome viaggiano in un pacchetto a parte, fuori
     // dal modulo base e dal suo tetto. Vedi dati/build.gradle.kts.
@@ -143,20 +193,53 @@ dependencies {
  * Le due copie sono compiti `Sync`: cancellano cio' che non c'e' piu' in
  * origine, e dopo la prima volta non ricopiano i file gia' uguali.
  */
+/**
+ * Il banco di prova: pagine che servivano a sviluppare, non all'app.
+ *
+ * `android.html` e' il menu dello spike, `compare.html` confronta le modalita'
+ * di riempimento delle bandiere, `pmtiles-test.html` legge un archivio di prova
+ * — ed e' l'unica ragione per cui esiste `firenze.pmtiles`, 6,3 MB.
+ *
+ * Attenzione a cosa **non** e' in elenco: `android-source.js` sembra un file di
+ * officina dal nome, ma lo importa `app.js`. Toglierlo spegnerebbe la mappa.
+ */
+val pagineOfficina = listOf(
+    "android.html",
+    "compare.html",
+    "compare.js",
+    "pmtiles-test.html",
+    "pmtiles-test.js",
+)
+
 val preparaWeb by tasks.registering(Sync::class) {
     description = "Copia il prototipo web negli asset del modulo base."
     from(rootProject.file("../web")) {
         // con la bandierina a `false` passa tutto di qua, sagome comprese
         if (datiNelPacchetto) exclude("data/**")
+        exclude(pagineOfficina)
+        exclude("data/firenze.pmtiles")
     }
     if (datiNelPacchetto) {
         // i PMTiles sono l'eccezione: letti a pezzi, quindi restano di qua
         from(rootProject.file("../web/data")) {
             include("*.pmtiles")
+            exclude("firenze.pmtiles")
             into("data")
         }
     }
     into(layout.buildDirectory.dir("assets-web"))
+}
+
+val preparaOfficina by tasks.registering(Sync::class) {
+    description = "Copia il banco di prova negli asset della sola build di debug."
+    from(rootProject.file("../web")) {
+        include(pagineOfficina)
+    }
+    from(rootProject.file("../web/data")) {
+        include("firenze.pmtiles")
+        into("data")
+    }
+    into(layout.buildDirectory.dir("assets-officina"))
 }
 
 val preparaDati by tasks.registering(Sync::class) {
@@ -170,7 +253,7 @@ val preparaDati by tasks.registering(Sync::class) {
 
 // `preBuild` e' il gancio piu' presto disponibile e copre il modulo base.
 tasks.named("preBuild") {
-    dependsOn(preparaWeb, preparaDati)
+    dependsOn(preparaWeb, preparaOfficina, preparaDati)
 }
 
 // L'asset pack no: AGP lo legge dalla cartella del modulo `dati` con compiti

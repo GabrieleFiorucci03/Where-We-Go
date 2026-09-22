@@ -88,7 +88,12 @@ class MainActivity : ComponentActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
-        WebView.setWebContentsDebuggingEnabled(true)
+        // Il varco per DevTools: con questa riga chiunque colleghi il telefono al
+        // computer puo' ispezionare la pagina dell'app, e su una build pubblica
+        // non e' una comodita' ma una porta aperta. `BuildConfig.DEBUG` e' falso
+        // nelle build di release e vero in quelle di sviluppo, quindi
+        // `tools/collaudo_apk.cjs` continua a funzionare dove serve.
+        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
         val indice = IndiceCitta(this)
         // Le regioni non stanno nell'indice SQLite: si leggono dai GeoJSON degli

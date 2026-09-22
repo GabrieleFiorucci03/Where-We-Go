@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Che cosa segue l'utente quando cambia telefono, e che cosa no.
+
+  Quello che conta sono le **marcature**: paesi, regioni e citta' vivono nel
+  `localStorage` della WebView, cioe' in `app_webview/` dentro la cartella dati
+  dell'app, che il backup automatico prende gia' per conto suo. Qui si dichiara
+  solo che cosa **togliere**, e sono due file rigenerabili e grossi:
+
+  - `citta.db`: 57 MB copiati dagli asset al primo avvio (IndiceCitta). Sul
+    telefono nuovo l'app se lo rifa' da sola in pochi secondi. Lasciarlo dentro
+    sarebbe peggio che inutile: il backup nel cloud ha una **quota di 25 MB per
+    app**, e superarla non manda avanti meta' backup, lo fa fallire tutto —
+    marcature comprese, cioe' l'unica cosa che non si puo' rigenerare.
+  - `tiles/`: i PMTiles copiati a mano nella cartella esterna dell'app
+    (TileFiles). Sono dati della mappa, non dell'utente, e pesano quanto l'app.
+
+  `fullBackupContent` (fino ad Android 11) vuole lo stesso elenco in un formato
+  diverso: e' il file `backup_rules.xml` qui accanto, da tenere allineato.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="citta.db" />
+        <exclude domain="external" path="tiles" />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Qui la quota non c'e', ma copiare 57 MB rigenerabili da un telefono
+             all'altro resta tempo speso per niente. -->
+        <exclude domain="file" path="citta.db" />
+        <exclude domain="external" path="tiles" />
+    </device-transfer>
+</data-extraction-rules>

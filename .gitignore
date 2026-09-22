@@ -18,12 +18,17 @@ data_raw/
 node_modules/
 # Il pacchetto dei dati derivati per la Release: lo rifa' tools/pacchetto_odbl.js
 dist/
+
+# Le uscite di Gradle, modulo per modulo. La riga con `**` vale per app, per
+# dati e per qualunque modulo nascera' dopo: l'elenco a mano si dimentica, ed e'
+# gia' successo — `android/dati/build/` non c'era, e un manifest generato e'
+# finito in un commit.
 android/build/
-android/app/build/
+android/**/build/
 android/.gradle/
+android/**/.gradle/
 android/.kotlin/
-*.apk
-*.aab
+android/**/.kotlin/
 
 # Percorso dell'SDK sulla macchina di chi compila: personale e inutile agli altri
 android/local.properties
@@ -40,6 +45,28 @@ android/dati/src/main/assets/
 *.jks
 *.keystore
 keystore.properties
+
+# Gli artefatti da installare o caricare. `.apks` e' l'insieme di split che
+# produce bundletool per provare l'AAB sul telefono; `.idsig` e' la firma
+# incrementale che AGP lascia accanto all'APK.
+*.apk
+*.aab
+*.apks
+*.apk.idsig
+
+# bundletool, se lo si scarica qui per provare l'AAB: e' un attrezzo di decine
+# di MB che si riprende dalle Release del suo progetto, non roba nostra.
+bundletool*.jar
+
+# --------------------------------------------------------------------------
+# Roba dell'ambiente di sviluppo, non del progetto
+# --------------------------------------------------------------------------
+# Android Studio: impostazioni della finestra, moduli, cattura dei profili. Il
+# progetto si apre e si compila da Gradle, quindi di qui dentro non serve
+# niente a chi lo clona.
+.idea/
+*.iml
+captures/
 
 # --------------------------------------------------------------------------
 # Dati personali: gli elenchi dei posti visitati e i backup dell'app dicono
